@@ -1,6 +1,17 @@
 const cx = 100, cy = 100, r = 80;
 let plans = [];
 
+// app.js の冒頭に追加すると親切なコード
+window.addEventListener('DOMContentLoaded', () => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const dateParam = urlParams.get('date');
+    if (dateParam) {
+        // 日付を綺麗に整形してタイトルに反映
+        document.getElementById('date-title').innerText = `${dateParam} のスケジュール`;
+    }
+    initClock(); // 元々あった時計初期化
+});
+
 // 1. 初期化: 24時間の目盛りと数字を描画
 function initClock() {
     const ticksGroup = document.getElementById('ticks-group');
