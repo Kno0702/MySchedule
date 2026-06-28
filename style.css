@@ -1,0 +1,124 @@
+/* 全体のリセットと基本スタイル */
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    background-color: #f8f9fa;
+    color: #333;
+    margin: 0;
+    padding: 10px;
+    display: flex;
+    justify-content: center;
+}
+
+.container {
+    width: 100%;
+    max-width: 400px;
+    background: #ffffff;
+    border-radius: 16px;
+    padding: 20px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    box-sizing: border-box;
+}
+
+h2 {
+    font-size: 1.4rem;
+    margin-top: 0;
+    margin-bottom: 15px;
+}
+
+/* ボタンの基本スタイル */
+.btn {
+    padding: 12px 18px;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+.btn-primary { background: #007bff; color: white; }
+.btn-secondary { background: #6c757d; color: white; width: 100%; }
+.btn-success { background: #28a745; color: white; width: 100%; }
+.btn-danger { background: #dc3545; color: white; }
+.btn-time { background: #e9ecef; color: #495057; flex: 1; margin: 2px; padding: 10px 5px; }
+.btn-time.active { background: #495057; color: white; }
+
+/* 円形スケジュールの配置 */
+.canvas-container {
+    display: flex;
+    justify-content: center;
+    margin: 20px 0;
+}
+svg {
+    width: 100%;
+    max-width: 300px;
+    height: 300px;
+}
+
+/* フォームとモーダル（ポップアップ） */
+#overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 99;
+}
+
+#modal {
+    display: none;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: white;
+    padding: 20px;
+    border-radius: 16px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+    width: 85%;
+    max-width: 340px;
+    z-index: 100;
+    box-sizing: border-box;
+}
+
+#modal h3 { margin-top: 0; margin-bottom: 15px; }
+
+.form-group {
+    margin-bottom: 14px;
+    text-align: left;
+}
+.form-group label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 4px;
+    color: #666;
+}
+.form-group input, .form-group select {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ced4da;
+    border-radius: 6px;
+    font-size: 16px; /* スマホでズームされないための16px以上 */
+    box-sizing: border-box;
+}
+
+.form-row {
+    display: flex;
+    gap: 10px;
+}
+.form-row .form-group { flex: 1; }
+
+.duration-buttons {
+    display: flex;
+    justify-content: space-between;
+}
+
+.modal-buttons {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 20px;
+    gap: 10px;
+}
+.modal-buttons .btn { flex: 1; }
