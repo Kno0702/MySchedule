@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="jn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Schedule</title>
+</head>
+<body>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+	const html = document.documentElement; // html要素を取得
+	let touchstartX = 0;
+	let touchendX = 0;
+	html.addEventListener('touchstart', e => {
+		touchstartX = e.changedTouches[0].screenX;
+	}, { passive: true });
+	html.addEventListener('touchend', e => {
+		touchendX = e.changedTouches[0].screenX;
+		handleGesture();
+	}, { passive: true });
+	function handleGesture() {
+		const swipeThreshold = 50;
+		const idAccount = '<?php echo $id_account; ?>';
+		if (touchendX < touchstartX - swipeThreshold) {
+			const nextUrl = '?id=' + encodeURIComponent(idAccount) + '&y=<?php echo $next_year; ?>&m=<?php echo $next_month; ?>';
+			window.location.href = nextUrl;
+		} else if (touchendX > touchstartX + swipeThreshold) {
+			const prevUrl = '?id=' + encodeURIComponent(idAccount) + '&y=<?php echo $prev_year; ?>&m=<?php echo $prev_month; ?>';
+			window.location.href = prevUrl;
+		}
+	}
+});
+    </script>
+</body>
+</html>
