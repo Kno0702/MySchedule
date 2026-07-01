@@ -23,6 +23,7 @@
         h1 { margin-bottom: 10px; }
     </style>
     <link rel="stylesheet" href="calendar/calendar.css">
+    <link rel="stylesheet" href="modal/modal.css">
 </head>
 <body>
 
@@ -36,8 +37,20 @@
     </div>
 </div>
 
+<div class="modal" id="scheduleModal">
+    <div class="modal-content">
+        <h3 id="modalDateTitle">〇月〇日のスケジュール</h3>
+        <textarea id="scheduleInput" placeholder="本日のスケジュールを入力してください..."></textarea>
+        <div class="modal-btns">
+            <button class="btn btn-close" id="closeBtn">閉じる</button>
+            <button class="btn btn-save" id="saveBtn">保存する</button>
+        </div>
+    </div>
+</div>
 
 <script src="calendar/calendar.js"></script>
+<script src="modal/modal.js"></script>
+
 <script src="app.js"></script>
 </body>
 </html>
