@@ -2,251 +2,113 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>マイ・スケジュール・カレンダー</title>
-    <style>
-        :root {
-            --primary-color: #4a90e2;
-            --bg-color: #f5f7fa;
-            --text-color: #333;
-        }
-        body {
-            font-family: 'Helvetica Neue', Arial, sans-serif;
-            background-color: var(--bg-color);
-            color: var(--text-color);
-            margin: 0;
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-        h1 { margin-bottom: 10px; }
-        .calendar-container {
-            background: white;
-            padding: 20px;
-            border-radius: 12px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
-            width: 100%;
-            max-width: 450px;
-        }
-        .calendar-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-            font-weight: bold;
-            font-size: 1.2rem;
-        }
-        .calendar-grid {
-            display: grid;
-            grid-template-columns: repeat(7, 1fr);
-            gap: 8px;
-            text-align: center;
-        }
-        .day-name {
-            font-weight: bold;
-            color: #888;
-            padding-bottom: 5px;
-        }
-        /* 日付ボタンのスタイル */
-        .day-btn {
-            background: #fff;
-            border: 1px solid #e1e4e8;
-            border-radius: 8px;
-            padding: 10px 0;
-            font-size: 1rem;
-            cursor: pointer;
-            position: relative;
-            transition: all 0.2s;
-            aspect-ratio: 1;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-        }
-        .day-btn:hover {
-            background: #f0f4f8;
-            border-color: var(--primary-color);
-        }
-        /* 予定がある日のドットマーク */
-        .has-event::after {
-            content: '';
-            width: 6px;
-            height: 6px;
-            background-color: var(--primary-color);
-            border-radius: 50%;
-            position: absolute;
-            bottom: 4px;
-        }
-        /* スケジュール入力画面（モーダル） */
-        .modal {
-            display: none;
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.4);
-            justify-content: center;
-            align-items: center;
-            z-index: 100;
-        }
-        .modal-content {
-            background: white;
-            padding: 25px;
-            border-radius: 12px;
-            width: 90%;
-            max-width: 400px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
-        }
-        .modal-content h3 { margin-top: 0; color: var(--primary-color); }
-        textarea {
-            width: 100%;
-            height: 120px;
-            margin: 15px 0;
-            padding: 10px;
-            border: 1px solid #ccc;
-            border-radius: 6px;
-            box-sizing: border-box;
-            resize: none;
-            font-size: 1rem;
-        }
-        .modal-btns {
-            display: flex;
-            justify-content: flex-end;
-            gap: 10px;
-        }
-        .btn {
-            padding: 8px 16px;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 0.95rem;
-        }
-        .btn-save { background: var(--primary-color); color: white; }
-        .btn-close { background: #e1e4e8; color: #333; }
-    </style>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>24hサークルカレンダー</title>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-<h1>スケジュールカレンダー</h1>
-<div class="calendar-container">
-    <div class="calendar-header" id="calendarTitle">2026年 72月</div>
-    <div class="calendar-grid" id="calendarGrid">
-        <div class="day-name">日</div><div class="day-name">月</div><div class="day-name">火</div>
-        <div class="day-name">水</div><div class="day-name">木</div><div class="day-name">金</div><div class="day-name">土</div>
-        </div>
-</div>
+    <!-- 共通ヘッダー -->
+    <header class="app-header">
+        <button id="back-btn" class="header-btn hidden">← 戻る</button>
+        <h1 id="header-title">24hカレンダー</h1>
+        <div style="width: 44px;"></div> <!-- 右側のスペースバランス用 -->
+    </header>
 
-<div class="modal" id="scheduleModal">
-    <div class="modal-content">
-        <h3 id="modalDateTitle">〇月〇日のスケジュール</h3>
-        <textarea id="scheduleInput" placeholder="本日のスケジュールを入力してください..."></textarea>
-        <div class="modal-btns">
-            <button class="btn btn-close" id="closeBtn">閉じる</button>
-            <button class="btn btn-save" id="saveBtn">保存する</button>
-        </div>
-    </div>
-</div>
-
-<script>
-// 今日の日付情報を取得
-const today = new Date();
-const currentYear = today.getFullYear();
-const currentMonth = today.getMonth(); // 0が1月、6が7月
-
-let selectedDateStr = ""; // 選択された日付のキー (例: "2026-07-15")
-
-document.addEventListener('DOMContentLoaded', () => {
-    renderCalendar(currentYear, currentMonth);
-    setupModalEvents();
-});
-
-// カレンダーを描画する関数
-function renderCalendar(year, month) {
-    const grid = document.getElementById('calendarGrid');
-    const title = document.getElementById('calendarTitle');
-    
-    title.innerText = `${year}年 ${month + 1}月`;
-
-    // 月の最初の日と最後の日を取得
-    const firstDayIndex = new Date(year, month, 1).getDay();
-    const totalDays = new Date(year, month + 1, 0).getDate();
-
-    // 1日より前の空白を埋める
-    for (let i = 0; i < firstDayIndex; i++) {
-        const emptyDiv = document.createElement('div');
-        grid.appendChild(emptyDiv);
-    }
-
-    // 日付ボタンを生成
-    for (let day = 1; day <= totalDays; day++) {
-        const btn = document.createElement('button');
-        btn.classList.add('day-btn');
-        btn.innerText = day;
-
-        // 日付の識別子を作成 (例: "2026-07-01")
-        const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    <main class="app-container">
         
-        // すでに予定が保存されているかチェックしてドットをつける
-        if (localStorage.getItem(dateStr)) {
-            btn.classList.add('has-event');
-        }
+        <!-- 1. 月間カレンダー画面 -->
+        <section id="view-calendar" class="app-view">
+            <div class="calendar-controls">
+                <button id="prev-month">◀</button>
+                <h2 id="current-month-year">2026年 7月</h2>
+                <button id="next-month">▶</button>
+            </div>
+            <div class="calendar-weekdays">
+                <div>日</div><div>月</div><div>火</div><div>水</div><div>木</div><div>金</div><div>土</div>
+            </div>
+            <div id="calendar-grid" class="calendar-grid"></div>
+        </section>
 
-        // ボタンが押されたら入力画面（モーダル）を開く
-        btn.addEventListener('click', () => openScheduleModal(dateStr, year, month + 1, day));
-        
-        grid.appendChild(btn);
-    }
-}
+        <!-- 2. スケジュール一覧画面（1日の詳細） -->
+        <section id="view-day-detail" class="app-view hidden">
+            <div class="day-header">
+                <h2 id="selected-date-label">7月6日 (月)</h2>
+                <!-- スケジュール名保存フォーム -->
+                <div class="routine-save-box">
+                    <input type="text" id="schedule-name-input" placeholder="この日の名前（例: 出張、休日）">
+                    <button id="save-schedule-name-btn">保存</button>
+                </div>
+            </div>
 
-// 入力画面（モーダル）を開く
-function openScheduleModal(dateStr, year, month, day) {
-    selectedDateStr = dateStr;
-    document.getElementById('modalDateTitle').innerText = `${year}年${month}月${day}日のスケジュール`;
-    
-    // 保存されている予定があればテキストエリアに読み込む
-    const savedEvent = localStorage.getItem(dateStr) || "";
-    document.getElementById('scheduleInput').value = savedEvent;
-    
-    document.getElementById('scheduleModal').style.display = 'flex';
-}
+            <!-- 24時間円形スケジュール (SVG) -->
+            <div class="circle-wrapper">
+                <svg id="schedule-circle" viewBox="0 0 200 200">
+                    <!-- 背景の円 -->
+                    <circle cx="100" cy="100" r="80" class="circle-bg" />
+                    <!-- 24時間の目盛り線やテキストはJSで動的に追加 -->
+                    <g id="circle-grid-group"></g>
+                    <!-- スケジュール円弧の描画エリア -->
+                    <g id="circle-arcs-group"></g>
+                    <!-- 中央のタップ領域 -->
+                    <circle cx="100" cy="100" r="50" class="circle-center-tap" id="circle-center-btn" />
+                    <text x="100" y="105" class="circle-center-text" id="circle-center-btn-text">タップして追加</text>
+                </svg>
+            </div>
 
-// モーダルのボタンイベント設定
-function setupModalEvents() {
-    const modal = document.getElementById('scheduleModal');
-    const closeBtn = document.getElementById('closeBtn');
-    const saveBtn = document.getElementById('saveBtn');
+            <!-- タイムライン風の簡易リスト表示 -->
+            <div class="task-list-container">
+                <h3>本日の予定一覧</h3>
+                <ul id="task-list"></ul>
+            </div>
 
-    // 閉じるボタン
-    closeBtn.addEventListener('click', () => modal.style.display = 'none');
+            <!-- 固定配置の「＋」ボタン -->
+            <button id="fab-add-btn" class="fab-btn">+</button>
+        </section>
 
-    // 保存ボタン
-    saveBtn.addEventListener('click', () => {
-        const text = document.getElementById('scheduleInput').value.trim();
-        
-        if (text) {
-            // ローカルストレージに保存
-            localStorage.setItem(selectedDateStr, text);
-        } else {
-            // 空欄で保存されたらデータを削除
-            localStorage.removeItem(selectedDateStr);
-        }
+        <!-- 3. スケジュール入力画面 -->
+        <section id="view-input" class="app-view hidden">
+            <h2 class="view-title">予定の登録</h2>
+            <form id="schedule-form" onsubmit="return false;">
+                <div class="form-group">
+                    <label for="event-title">予定名</label>
+                    <input type="text" id="event-title" required placeholder="例: ミーティング、睡眠">
+                </div>
 
-        modal.style.display = 'none';
-        
-        // カレンダーのドット表示を更新するために再描画
-        resetCalendarGrid();
-        renderCalendar(currentYear, currentMonth);
-    });
-}
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="event-start">開始時刻</label>
+                        <input type="time" id="event-start" required value="09:00">
+                    </div>
+                    <div class="form-group">
+                        <label for="event-end">終了時刻</label>
+                        <input type="time" id="event-end" required value="10:00">
+                    </div>
+                </div>
 
-// カレンダーのグリッドを一度リセットする関数
-function resetCalendarGrid() {
-    const grid = document.getElementById('calendarGrid');
-    // 曜日のヘッダーだけ残して日付を削除
-    const dayNames = grid.querySelectorAll('.day-name');
-    grid.innerHTML = '';
-    dayNames.forEach(name => grid.appendChild(name));
-}
-</script>
+                <!-- 自動計算される予定の長さ表示 -->
+                <div class="duration-display">
+                    予定の長さ: <span id="duration-text">1時間 0分</span>
+                </div>
 
+                <!-- カラーパレット選択 -->
+                <div class="form-group">
+                    <label>カラー</label>
+                    <div class="color-palette">
+                        <button type="button" class="color-chip active" style="background-color: #ff5e57;" data-color="#ff5e57"></button>
+                        <button type="button" class="color-chip" style="background-color: #ffc048;" data-color="#ffc048"></button>
+                        <button type="button" class="color-chip" style="background-color: #1dd1a1;" data-color="#1dd1a1"></button>
+                        <button type="button" class="color-chip" style="background-color: #54a0ff;" data-color="#54a0ff"></button>
+                        <button type="button" class="color-chip" style="background-color: #5f27cd;" data-color="#5f27cd"></button>
+                    </div>
+                </div>
+
+                <button type="submit" id="submit-event-btn" class="primary-btn">登録する</button>
+            </form>
+        </section>
+
+    </main>
+
+    <script src="app.js"></script>
 </body>
 </html>
