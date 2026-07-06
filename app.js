@@ -30,6 +30,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const startMinPicker = document.getElementById('start-min-picker');
     const endMinPicker = document.getElementById('end-min-picker');
 
+    // モーダル関連要素
+    const routineModal = document.getElementById('routine-modal');
+    const openFolderBtn = document.getElementById('open-folder-btn');
+    const closeModalBtn = document.getElementById('close-modal-btn');
+    const routineList = document.getElementById('routine-list');
+
     // --- クイック分選択タブ (5分刻み) の動的生成 ---
     function initMinutePickers() {
         if (!startMinPicker || !endMinPicker) return;
@@ -67,7 +73,6 @@ document.addEventListener('DOMContentLoaded', () => {
         let hourStr = '09'; // デフォルト
 
         if (currentVal.length >= 1) {
-            // 既に値が入力されている場合は、その時の「時」をキープ
             const parsed = parseTimeInput(input.value);
             if (parsed) {
                 hourStr = parsed.split(':')[0];
@@ -103,7 +108,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // キーボード直接入力（半角数字）を「HH:MM」に解析・補完するヘルパー
     function parseTimeInput(val) {
-        // 数字以外を除去して半角化
         let clean = val.replace(/[^0-9]/g, '');
         if (!clean) return null;
 
@@ -131,14 +135,12 @@ document.addEventListener('DOMContentLoaded', () => {
     function setupTimeInputFormatting(input) {
         if (!input) return;
 
-        // 入力中のリアルタイム補完（4桁打ったら自動でコロンを入れる等）
         input.addEventListener('input', () => {
             let val = input.value.replace(/[^0-9:]/g, '');
             input.value = val;
             updateDuration();
         });
 
-        // フォーカスが外れたタイミングできれいな形式 (例: 930 -> 09:30) に確定させる
         input.addEventListener('blur', () => {
             if (!input.value.trim()) return;
             const formatted = parseTimeInput(input.value);
@@ -344,7 +346,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         const cx = 120, cy = 120, r = 80;
 
-        // 1. 【見えない判定エリア】1時間ごとのパーツ
+        // 1. 【判定エリア】1時間ごとのパーツ
         for (let h = 0; h < 24; h++) {
             const startAngle = (h * 15) - 90;
             const endAngle = ((h + 1) * 15) - 90;
@@ -516,6 +518,108 @@ document.addEventListener('DOMContentLoaded', () => {
             state.editingEventIndex = null; 
             showPage('input');
         });
+    }
+
+
+    // --- スケジュール呼び出し・管理（モーダル）ロジック ---
+    if (openFolderBtn) {
+        openFolderBtn.addEventListener('click', () => {
+            renderRoutineList();
+            if (routineModal) routineModal.classList.add('open');
+        });
+    }
+
+    if (closeModalBtn) {
+        closeModalBtn.addEventListener('click', () => {
+            if (routineModal) routineModal.classList.remove('open');
+        });
+    }
+
+    if (routineModal) {
+        routineModal.addEventListener('click', (e) => {
+            if (e.target === routineModal) {
+                routineModal.classList.remove('open');
+            }
+        });
+    }
+
+    // 保存されたルーティン（nameが入力されている日付）の一覧描画
+    function renderRoutineList() {
+        if (!routineList) return;
+        routineList.innerHTML = '';
+
+        const keys = Object.keys(state.db).filter(key => state.db[key] && state.db[key].name && state.db[key].name.trim() !== '');
+
+        if (keys.length === 0) {
+            routineList.innerHTML = '<li class="no-routine-msg">保存された名前付きスケジュールがありません。<br>他のお日にちで名前をつけて保存してください。</li>';
+            return;
+        }
+
+        keys.forEach(key => {
+            const item = state.db[key];
+            const eventCount = item.events ? item.events.length : 0;
+            
+            const li = document.createElement('li');
+            li.className = 'routine-item';
+            li.innerHTML = `
+                <div class="routine-item-info">
+                    <div class="routine-item-name">${escapeHtml(item.name)}</div>
+                    <div class="routine-item-meta">記録日: ${key} (${eventCount}個の予定)</div>
+                </div>
+                <div class="routine-action-btns">
+                    <button type="button" class="routine-apply-btn">適用</button>
+                    <button type="button" class="routine-delete-btn">削除</button>
+                </div>
+            `;
+
+            // 適用ボタンのイベント処理
+            li.querySelector('.routine-apply-btn').addEventListener('click', () => {
+                if (confirm(`「${item.name}」のスケジュールを本日のタイムラインに上書きコピーしますか？`)) {
+                    applyRoutine(key);
+                }
+            });
+
+            // 削除ボタンのイベント処理（現編集日に影響を与えず、対象データのみをクリア）
+            li.querySelector('.routine-delete-btn').addEventListener('click', () => {
+                if (confirm(`保存されたデータ「${item.name} (${key})」を一覧から完全に削除しますか？\n※現在の予定が消えることはありません。`)) {
+                    deleteRoutine(key);
+                }
+            });
+
+            routineList.appendChild(li);
+        });
+    }
+
+    // ルーティンデータを現在の日付へ上書きコピーする
+    function applyRoutine(sourceDateKey) {
+        if (!state.selectedDate || !state.db[sourceDateKey]) return;
+
+        const sourceData = state.db[sourceDateKey];
+        
+        if (!state.db[state.selectedDate]) {
+            state.db[state.selectedDate] = { name: '', events: [] };
+        }
+
+        // 予定の配列をディープコピー
+        state.db[state.selectedDate].events = JSON.parse(JSON.stringify(sourceData.events || []));
+
+        saveToStorage();
+        if (routineModal) routineModal.classList.remove('open');
+        
+        renderDayDetail();
+    }
+
+    // ルーティンデータの完全削除（nameとeventsのクリア）
+    function deleteRoutine(targetDateKey) {
+        if (!state.db[targetDateKey]) return;
+
+        // 該当キーのデータを初期化（またはオブジェクトから消去）
+        delete state.db[targetDateKey];
+
+        saveToStorage();
+        
+        // モーダル内のリスト表示を即座に再描画
+        renderRoutineList();
     }
 
 
