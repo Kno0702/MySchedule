@@ -171,57 +171,38 @@ body {
 }
 
 .circle-wrapper {
-    width: 85%;
-    max-width: 320px;
+    width: 90%;
+    max-width: 340px;
     margin: 24px auto;
 }
 #schedule-circle {
     width: 100%;
     height: auto;
 }
+/* 円の背景：アプリ全体の背景色に合わせることで、予定がない場所を完全に「まっさら」に見せます */
 .circle-bg {
-    fill: #161925;
-    stroke: #23283b;
-    stroke-width: 1.5;
+    fill: #d3d3d3;
+    stroke: none;
 }
 
-/* ★ 1時間ごとのタップエリア設定 */
+/* 1時間ごとの「見えない」タップ判定エリア */
 .tap-zone {
-    fill: transparent;      /* 普段は完全に透明 */
+    fill: transparent;      
     cursor: pointer;
-    transition: fill 0.1s ease;
+    transition: fill 0.12s ease;
 }
-.tap-zone:hover {
-    fill: rgba(84, 160, 255, 0.05); /* PCでのマウスホールド用 */
-}
+/* タップしている間だけ、中心から広がる扇形が薄い白（または青）でフィードバック表示される */
 .tap-zone:active {
-    fill: rgba(84, 160, 255, 0.3);  /* タップした瞬間一瞬青くハイライト */
+    fill: rgba(255, 255, 255, 0.08);  
 }
 
-.circle-grid-line {
-    stroke: #2a314a;
-    stroke-width: 0.5;
-    pointer-events: none; /* 下にあるタップ要素の邪魔をしない */
-}
+/* 円の外側に配置される時間数字のスタイル */
 .circle-grid-text {
-    fill: #8892b0;
-    font-size: 6px;
+    fill: #a0aec0;
+    font-size: 9px;
+    font-weight: 500;
     text-anchor: middle;
     dominant-baseline: middle;
-    pointer-events: none;
-}
-.circle-center-tap {
-    fill: #1f2336;
-    cursor: pointer;
-}
-.circle-center-tap:active {
-    fill: #2a314a;
-}
-.circle-center-text {
-    fill: #54a0ff;
-    font-size: 7px;
-    font-weight: bold;
-    text-anchor: middle;
     pointer-events: none;
 }
 

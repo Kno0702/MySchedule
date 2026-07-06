@@ -9,7 +9,7 @@ document.addEventListener('DOMContentLoaded', () => {
         db: {}                    
     };
 
-    // ローカルストレージデータの復元
+    // ローカルストレージからのデータ復元
     try {
         const localData = localStorage.getItem('circle_calendar_db');
         if (localData) state.db = JSON.parse(localData);
@@ -23,7 +23,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const backBtn = document.getElementById('back-btn');
     const headerTitle = document.getElementById('header-title');
 
-    // --- 画面表示制御（プリセット対応に拡張） ---
+    // --- 画面表示制御 ---
     function showPage(viewName, presetTimes = null) {
         if (!appMain) return;
         
@@ -41,7 +41,6 @@ document.addEventListener('DOMContentLoaded', () => {
             if (backBtn) backBtn.style.display = 'flex';
             if (headerTitle) headerTitle.textContent = '予定の追加';
             
-            // タップされた時間情報があればそれをフォームに適用、なければデフォルト値
             if (presetTimes) {
                 resetForm(presetTimes.start, presetTimes.end);
             } else {
@@ -50,7 +49,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // ヘッダー「戻る」ボタン
+    // ヘッダー「戻る」ボタンの挙動
     if (backBtn) {
         backBtn.addEventListener('click', () => {
             if (state.currentView === 'input') {
@@ -148,7 +147,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!timeStr) return -90;
         const [hours, minutes] = timeStr.split(':').map(Number);
         const totalMinutes = (hours || 0) * 60 + (minutes || 0);
-        return (totalMinutes * 0.25) - 90;
+        return (totalMinutes * 0.25) - 90; // 1分 = 0.25度, 0時が真上(-90度)
     }
 
     function polarToCartesian(centerX, centerY, radius, angleInDegrees) {
@@ -159,28 +158,21 @@ document.addEventListener('DOMContentLoaded', () => {
         };
     }
 
-    // ドーナツ状・扇型のパスデータを生成する関数 (太さ指定に対応)
-    function describeArc(x, y, radius, startAngle, endAngle, strokeWidth = 16) {
+    // 中心点 (x, y) から外周半径 (radius) までを隙間なく埋める扇形（パイ型ピース）パスの生成
+    function describePieSlice(x, y, radius, startAngle, endAngle) {
         if (endAngle - startAngle >= 360) {
             endAngle = startAngle + 359.99;
         }
-        // 外側の弧の座標
         const startOuter = polarToCartesian(x, y, radius, endAngle);
         const endOuter = polarToCartesian(x, y, radius, startAngle);
         
-        // 内側の弧の座標 (太さ分だけ半径を引く)
-        const innerRadius = radius - strokeWidth;
-        const startInner = polarToCartesian(x, y, innerRadius, endAngle);
-        const endInner = polarToCartesian(x, y, innerRadius, startAngle);
-        
         const largeArcFlag = endAngle - startAngle <= 180 ? "0" : "1";
         
-        // 扇型を塗りつぶし領域として一筆書きするSVGパスコマンド
+        // M(中心) -> L(開始外周) -> A(円弧描画) -> Z(中心へ戻って閉じる)
         return [
-            "M", startOuter.x, startOuter.y,
-            "A", radius, radius, 0, largeArcFlag, 0, endOuter.x, endOuter.y,
-            "L", endInner.x, endInner.y,
-            "A", innerRadius, innerRadius, 0, largeArcFlag, 1, startInner.x, startInner.y,
+            "M", x, y,
+            "L", endOuter.x, endOuter.y,
+            "A", radius, radius, 0, largeArcFlag, 1, startOuter.x, startOuter.y,
             "Z"
         ].join(" ");
     }
@@ -196,21 +188,20 @@ document.addEventListener('DOMContentLoaded', () => {
         arcsGroup.innerHTML = '';
         tapZonesGroup.innerHTML = '';
         
-        const cx = 100, cy = 100, r = 80;
+        // viewBox="0 0 240 240" に合わせた中心座標と判定半径
+        const cx = 120, cy = 120, r = 80;
 
-        // ★【新規実装】1時間ずつの個別タップ用ボタンを最背面に24枚敷き詰める
+        // 1. 【透明な判定エリア】1時間ごとのパーツを24枚敷き詰める（描画は透明、クリックは有効）
         for (let h = 0; h < 24; h++) {
             const startAngle = (h * 15) - 90;
             const endAngle = ((h + 1) * 15) - 90;
             
             const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
-            // スケジュール表示と同じ幅(20px)の扇型パーツを生成
-            const pathData = describeArc(cx, cy, r, startAngle, endAngle, 30);
+            const pathData = describePieSlice(cx, cy, r, startAngle, endAngle);
             
             path.setAttribute("d", pathData);
             path.setAttribute("class", "tap-zone");
             
-            // タップ時、その時間のプリセットを持って入力画面へ切り替える
             path.addEventListener('click', () => {
                 const startStr = `${String(h).padStart(2, '0')}:00`;
                 const endStr = `${String((h + 1) % 24).padStart(2, '0')}:00`;
@@ -220,48 +211,39 @@ document.addEventListener('DOMContentLoaded', () => {
             tapZonesGroup.appendChild(path);
         }
 
-        // 24時間目盛り線の描画
-        for (let h = 0; h < 24; h++) {
-            const angle = (h * 15) - 90;
-            const outerP = polarToCartesian(cx, cy, r, angle);
-            const innerP = polarToCartesian(cx, cy, r - 4, angle);
-            
-            const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
-            line.setAttribute("x1", innerP.x);
-            line.setAttribute("y1", innerP.y);
-            line.setAttribute("x2", outerP.x);
-            line.setAttribute("y2", outerP.y);
-            line.setAttribute("class", "circle-grid-line");
-            gridGroup.appendChild(line);
-            
-            if (h % 3 === 0) {
-                const textP = polarToCartesian(cx, cy, r - 10, angle);
-                const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
-                text.setAttribute("x", textP.x);
-                text.setAttribute("y", textP.y);
-                text.setAttribute("class", "circle-grid-text");
-                text.textContent = `${h}h`;
-                gridGroup.appendChild(text);
-            }
-        }
-
-        // スケジュールに合わせた円弧(Arc)の重ね書き
+        // 2. 【予定の可視化】登録されたスケジュールのみ中心から外周まで扇形として塗りつぶす
         events.forEach(ev => {
             let startAngle = timeToAngle(ev.start);
             let endAngle = timeToAngle(ev.end);
             if (endAngle <= startAngle) endAngle += 360; 
 
             const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
-            // 境界線ではなく面(閉じた扇形)として描くよう変更
-            const arcPathData = describeArc(cx, cy, r - 5, startAngle, endAngle, 10);
+            const arcPathData = describePieSlice(cx, cy, r, startAngle, endAngle);
             
             path.setAttribute("d", arcPathData);
             path.setAttribute("fill", ev.color || '#54a0ff');
             path.setAttribute("opacity", "0.85");
-            path.style.pointerEvents = "none"; // スケジュール自体はタップ判定を透過させる
+            path.style.pointerEvents = "none"; // 下の透明タップゾーンにクリックを通す
             
             arcsGroup.appendChild(path);
         });
+
+        // 3. 【外周テキスト】放射線（境界線）は完全に廃止し、数字だけを円のさらに外側に配置
+        for (let h = 0; h < 24; h++) {
+            const angle = (h * 15) - 90;
+            
+            // 半径r(80)にオフセット(16px)を加え、円の外側に文字盤を配置
+            const textP = polarToCartesian(cx, cy, r + 16, angle);
+            
+            const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
+            text.setAttribute("x", textP.x);
+            text.setAttribute("y", textP.y);
+            text.setAttribute("class", "circle-grid-text");
+            
+            // 数値のみを割り当て（「h」や「:00」は一切含まない）
+            text.textContent = h;
+            gridGroup.appendChild(text);
+        }
     }
 
     function renderDayDetail() {
@@ -334,11 +316,9 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // ＋ボタン、中央ボタンはデフォルト（現在時刻周辺など）で起動
+    // フローティングボタンイベント
     const fabAddBtn = document.getElementById('fab-add-btn');
-    const circleCenterBtn = document.getElementById('circle-center-btn');
     if (fabAddBtn) fabAddBtn.addEventListener('click', () => showPage('input'));
-    if (circleCenterBtn) circleCenterBtn.addEventListener('click', () => showPage('input'));
 
 
     // --- 3. スケジュール入力画面ロジック ---
@@ -376,7 +356,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if (startInput) startInput.addEventListener('input', updateDuration);
     if (endInput) endInput.addEventListener('input', updateDuration);
 
-    // 引数を受け取ってフォームの初期値を書き換える仕様に拡張
     function resetForm(startTime = '09:00', endTime = '10:00') {
         const titleInput = document.getElementById('event-title');
         if (titleInput) titleInput.value = '';
@@ -424,11 +403,12 @@ document.addEventListener('DOMContentLoaded', () => {
         return `${y}-${m}-${d}`;
     }
 
+    // HTMLエスケープ処理
     function escapeHtml(str) {
         return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     }
 
-    // 初期化実行
+    // 初回初期化
     renderCalendar();  
     showPage('calendar'); 
 });

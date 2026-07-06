@@ -15,7 +15,7 @@
         <div style="width: 44px;"></div> <!-- 右側のバランス用スペース -->
     </header>
 
-    <!-- アプリ全体のコンテナ。data-view属性の値によって、表示する子セクションをCSSで制御します -->
+    <!-- アプリ全体のコンテナ。data-view属性の値によってCSSで画面を切り替えます -->
     <main class="app-container" id="app-main" data-view="calendar">
         
         <!-- 1. 月間カレンダー画面 -->
@@ -44,21 +44,19 @@
 
             <!-- 24時間円形スケジュール (SVG) -->
             <div class="circle-wrapper">
-                <svg id="schedule-circle" viewBox="0 0 200 200">
-                    <!-- 背景の円 -->
-                    <circle cx="100" cy="100" r="80" class="circle-bg" />
+                <!-- 外側の数字フォントサイズや余白を確保するため、viewBoxを 240x240 に拡張 -->
+                <svg id="schedule-circle" viewBox="0 0 240 240">
+                    <!-- 背景の円（ベース色） -->
+                    <circle cx="120" cy="120" r="80" class="circle-bg" />
                     
-                    <!-- 【重要】1時間ごとのタップ反応・ハイライト用レイヤー（JSで動的生成） -->
+                    <!-- 【見えないボタン】1時間ごとのパイ型タップ反応レイヤー -->
                     <g id="circle-tap-zones-group"></g>
 
-                    <!-- 24時間の目盛り線やテキストはJSで動的に追加 -->
-                    <g id="circle-grid-group"></g>
-                    <!-- スケジュール円弧の描画エリア -->
+                    <!-- スケジュール（扇形）の描画エリア -->
                     <g id="circle-arcs-group"></g>
-                    
-                    <!-- 中央のタップ領域 -->
-                    <circle cx="100" cy="100" r="50" class="circle-center-tap" id="circle-center-btn" />
-                    <text x="100" y="105" class="circle-center-text" id="circle-center-btn-text">タップして追加</text>
+
+                    <!-- 円の外側の時間数字（テキスト）レイヤー -->
+                    <g id="circle-grid-group"></g>
                 </svg>
             </div>
 
