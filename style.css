@@ -8,8 +8,8 @@
 
 body {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-    background-color: #0f111a;
-    color: #e3e6ed;
+    background-color: #fffafa;
+    color: #302833;
     overflow-x: hidden;
     line-height: 1.5;
 }
@@ -21,24 +21,25 @@ body {
     left: 0;
     width: 100%;
     height: 56px;
-    background-color: #161925;
+    background-color: #e4d2d8;
     display: flex;
     align-items: center;
     justify-content: space-between;
     padding: 0 16px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.176);
     z-index: 100;
 }
 
 .app-header h1 {
     font-size: 1.1rem;
     font-weight: 600;
+    color: #302833;
 }
 
 .header-btn {
     background: none;
     border: none;
-    color: #54a0ff;
+    color: #302833;
     font-size: 1rem;
     cursor: pointer;
     min-width: 44px;
@@ -76,9 +77,9 @@ body {
     margin-bottom: 16px;
 }
 .calendar-controls button {
-    background-color: #161925;
+    background-color: #302833;
     border: none;
-    color: #e3e6ed;
+    color: #fffafa;
     width: 44px;
     height: 44px;
     border-radius: 50%;
@@ -86,14 +87,14 @@ body {
     cursor: pointer;
 }
 .calendar-controls button:active {
-    background-color: #23283b;
+    background-color: #302833;
 }
 .calendar-weekdays {
     display: grid;
     grid-template-columns: repeat(7, 1fr);
     text-align: center;
     font-weight: bold;
-    color: #8892b0;
+    color: #302833;
     margin-bottom: 8px;
     font-size: 0.9rem;
 }
@@ -103,15 +104,15 @@ body {
     gap: 6px;
 }
 .calendar-day {
-    background-color: #161925;
-    border: 1px solid #23283b;
+    background-color: #302833;
+    border: 1px solid #302833;
     border-radius: 8px;
     aspect-ratio: 1;
     display: flex;
     flex-direction: column;
-    justify-content: space-between;
+    justify-content: space-between; /* 上部に日付、下部にドットを配置 */
     padding: 6px;
-    color: #e3e6ed;
+    color: #fffafa;
     font-size: 0.9rem;
     position: relative;
     cursor: pointer;
@@ -123,8 +124,8 @@ body {
     pointer-events: none;
 }
 .calendar-day.today {
-    border: 2px solid #54a0ff;
-    background-color: #1b2234;
+    border: 3px solid #b94047;
+    background-color: #302833;
 }
 .day-dots {
     display: flex;
@@ -142,24 +143,30 @@ body {
 /* --- 2. 詳細・円形スケジュール画面 --- */
 .day-header {
     margin-bottom: 16px;
+    color: #302833;
 }
 .routine-save-box {
     display: flex;
     gap: 8px;
     margin-top: 8px;
+    color:#fffafa;
 }
 .routine-save-box input {
     flex: 1;
-    background-color: #161925;
-    border: 1px solid #23283b;
+    background-color: #d4acad;
+    border: 1px solid #d4acad;
     border-radius: 6px;
-    color: #e3e6ed;
+    color: #fffafa;
     padding: 8px 12px;
     font-size: 0.95rem;
 }
+.routine-save-box input::placeholder {
+    color: #fffafa; 
+    opacity: 1;    /* ブラウザによる透過を無効にするおまじない */
+}
 .routine-save-box button {
-    background-color: #2e344e;
-    color: #e3e6ed;
+    background-color: #d4acad;
+    color: #fffafa;
     border: none;
     padding: 0 16px;
     border-radius: 6px;
@@ -167,7 +174,7 @@ body {
     cursor: pointer;
 }
 .routine-save-box button:active {
-    background-color: #3e4668;
+    background-color: #d4acad;
 }
 
 .circle-wrapper {
@@ -181,7 +188,7 @@ body {
 }
 /* 円の背景：アプリ全体の背景色に合わせることで、予定がない場所を完全に「まっさら」に見せます */
 .circle-bg {
-    fill: #d3d3d3;
+    fill: #e4d2d8;
     stroke: none;
 }
 
@@ -196,48 +203,79 @@ body {
     fill: rgba(255, 255, 255, 0.08);  
 }
 
+/* 円の予定セグメントのスタイル（タップ可能にするためのカーソル設定） */
+.circle-event-arc {
+    cursor: pointer;
+}
+.circle-event-arc:active {
+    opacity: 0.8;
+}
+
 /* 円の外側に配置される時間数字のスタイル */
 .circle-grid-text {
-    fill: #a0aec0;
+    fill: #c099a0;
     font-size: 9px;
     font-weight: 500;
     text-anchor: middle;
     dominant-baseline: middle;
     pointer-events: none;
 }
-
+.circle-event-text {
+    font-size: 7px;
+    font-weight: bold;
+    fill: #fffafa; /* 単色の白文字 */
+    text-anchor: middle;
+    dominant-baseline: middle; /* 算出した中心点に正確に配置 */
+    letter-spacing: 0.2px;
+    cursor: pointer;
+}
+.circle-tick-line {
+    stroke: #c099a0;      /* 全体のダークモードになじむシンプルな暗めの色 */
+    stroke-width: 1px;    /* 視覚的な邪魔をしない細い境界線 */
+    stroke-linecap: round; /* 線の端を丸めて綺麗に表現 */
+}
 .task-list-container {
     margin-top: 24px;
 }
 .task-list-container h3 {
     font-size: 1rem;
     margin-bottom: 12px;
-    color: #8892b0;
+    color: #302833;
 }
 #task-list {
     list-style: none;
 }
 .task-item {
-    background-color: #161925;
+    background-color: #d4acad;
     padding: 12px 16px;
     border-radius: 8px;
     margin-bottom: 8px;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    border-left: 4px solid #fff;
+    border-left: 4px solid #fffafa;
+    transition: background-color 0.15s ease, transform 0.1s ease;
+}
+.task-item-content {
+    flex: 1;
+    cursor: pointer;
+}
+.task-item:active {
+    background-color: #c99ba0; /* タップした瞬間に少し暗く（または明るく）する */
+    transform: scale(0.99);    /* ほんの少し沈み込ませてボタン感を出す */
 }
 .task-item-time {
     font-size: 0.85rem;
-    color: #8892b0;
+    color: #302833;
 }
 .task-delete-btn {
     background: none;
     border: none;
-    color: #ff5e57;
+    color: #302833;
     font-size: 0.9rem;
     padding: 4px 8px;
     cursor: pointer;
+    z-index: 10; /* コンテンツエリアのタップと被らないように独立 */
 }
 
 .fab-btn {
@@ -247,11 +285,11 @@ body {
     width: 56px;
     height: 56px;
     border-radius: 50%;
-    background-color: #54a0ff;
-    color: #fff;
+    background-color: #d4acad;
+    color: #fffafa;
     font-size: 2rem;
     border: none;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.176);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -259,7 +297,7 @@ body {
     cursor: pointer;
 }
 .fab-btn:active {
-    background-color: #3b82f6;
+    background-color: #d4acad;
 }
 
 /* --- 3. 入力画面 --- */
@@ -280,30 +318,30 @@ body {
 label {
     display: block;
     margin-bottom: 8px;
-    color: #8892b0;
+    color: #302833;
     font-size: 0.9rem;
 }
 input[type="text"], input[type="time"] {
     width: 100%;
     height: 48px;
-    background-color: #161925;
-    border: 1px solid #23283b;
+    background-color: #d4acad;
+    border: 1px solid #d4acad;
     border-radius: 8px;
-    color: #e3e6ed;
+    color: #302833;
     padding: 0 12px;
     font-size: 1rem;
     outline: none;
 }
 input[type="text"]:focus, input[type="time"]:focus {
-    border-color: #54a0ff;
+    border-color: #d4acad;
 }
 .duration-display {
-    background-color: #1f2336;
+    background-color: #d4acad;
     padding: 12px;
     border-radius: 8px;
     margin-bottom: 20px;
     font-size: 0.95rem;
-    color: #1dd1a1;
+    color: #302833;
 }
 
 .color-palette {
@@ -318,15 +356,15 @@ input[type="text"]:focus, input[type="time"]:focus {
     cursor: pointer;
 }
 .color-chip.active {
-    border-color: #fff;
+    border-color: #fffafa;
     transform: scale(1.1);
 }
 
 .primary-btn {
     width: 100%;
     height: 50px;
-    background-color: #1dd1a1;
-    color: #0f111a;
+    background-color: #d4acad;
+    color: #302833;
     border: none;
     border-radius: 8px;
     font-size: 1rem;
@@ -335,5 +373,5 @@ input[type="text"]:focus, input[type="time"]:focus {
     margin-top: 12px;
 }
 .primary-btn:active {
-    background-color: #10ac84;
+    background-color: #d4acad;
 }

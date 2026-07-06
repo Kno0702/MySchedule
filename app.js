@@ -6,6 +6,7 @@ document.addEventListener('DOMContentLoaded', () => {
         currentDate: new Date(),  
         selectedDate: null,       
         selectedColor: '#ff5e57', 
+        editingEventIndex: null,   // 現在編集中のイベントのインデックス (null の場合は新規登録)
         db: {}                    
     };
 
@@ -39,12 +40,22 @@ document.addEventListener('DOMContentLoaded', () => {
             renderDayDetail(); 
         } else if (viewName === 'input') {
             if (backBtn) backBtn.style.display = 'flex';
-            if (headerTitle) headerTitle.textContent = '予定の追加';
+            if (headerTitle) headerTitle.textContent = state.editingEventIndex !== null ? '予定の編集' : '予定の追加';
             
+            // 入力画面のタイトルとボタン文字を動的に切り替え
+            const inputViewTitle = document.getElementById('input-view-title');
+            const submitEventBtn = document.getElementById('submit-event-btn');
+            if (inputViewTitle) {
+                inputViewTitle.textContent = state.editingEventIndex !== null ? '予定の編集' : '予定の登録';
+            }
+            if (submitEventBtn) {
+                submitEventBtn.textContent = state.editingEventIndex !== null ? '更新する' : '登録する';
+            }
+
             if (presetTimes) {
-                resetForm(presetTimes.start, presetTimes.end);
+                resetForm(presetTimes.start, presetTimes.end, presetTimes.title, presetTimes.color);
             } else {
-                resetForm('09:00', '10:00');
+                resetForm('09:00', '10:00', '', '#ff5e57');
             }
         }
     }
@@ -69,7 +80,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // --- 1. 月間カレンダー描画処理 ---
+    // --- 1. 月間カレンダー描画処理（一番長い予定のドットを1つ表示） ---
     function renderCalendar() {
         const year = state.currentDate.getFullYear();
         const month = state.currentDate.getMonth();
@@ -103,18 +114,35 @@ document.addEventListener('DOMContentLoaded', () => {
             numDiv.textContent = day;
             dayButton.appendChild(numDiv);
             
-            const dotsDiv = document.createElement('div');
-            dotsDiv.classList.add('day-dots');
-            
             if (state.db[dateStr] && state.db[dateStr].events && state.db[dateStr].events.length > 0) {
-                state.db[dateStr].events.slice(0, 3).forEach(ev => {
-                    const dot = document.createElement('span');
-                    dot.classList.add('dot');
-                    dot.style.backgroundColor = ev.color || '#fff';
-                    dotsDiv.appendChild(dot);
+                let maxDuration = -1;
+                let longestEventColor = '#fff';
+
+                state.db[dateStr].events.forEach(ev => {
+                    const [sH, sM] = ev.start.split(':').map(Number);
+                    let [eH, eM] = ev.end.split(':').map(Number);
+                    
+                    let startMin = sH * 60 + sM;
+                    let endMin = eH * 60 + eM;
+                    if (endMin <= startMin) endMin += 24 * 60; // 日跨ぎ対応
+                    
+                    const duration = endMin - startMin;
+                    if (duration > maxDuration) {
+                        maxDuration = duration;
+                        longestEventColor = ev.color || '#fff';
+                    }
                 });
+
+                const dotsDiv = document.createElement('div');
+                dotsDiv.classList.add('day-dots');
+                
+                const dot = document.createElement('span');
+                dot.classList.add('dot');
+                dot.style.backgroundColor = longestEventColor;
+                dotsDiv.appendChild(dot);
+                
+                dayButton.appendChild(dotsDiv);
             }
-            dayButton.appendChild(dotsDiv);
             
             dayButton.addEventListener('click', () => {
                 state.selectedDate = dateStr;
@@ -168,7 +196,6 @@ document.addEventListener('DOMContentLoaded', () => {
         
         const largeArcFlag = endAngle - startAngle <= 180 ? "0" : "1";
         
-        // M(中心) -> L(開始外周) -> A(円弧描画) -> Z(中心へ戻って閉じる)
         return [
             "M", x, y,
             "L", endOuter.x, endOuter.y,
@@ -188,10 +215,9 @@ document.addEventListener('DOMContentLoaded', () => {
         arcsGroup.innerHTML = '';
         tapZonesGroup.innerHTML = '';
         
-        // viewBox="0 0 240 240" に合わせた中心座標と判定半径
         const cx = 120, cy = 120, r = 80;
 
-        // 1. 【透明な判定エリア】1時間ごとのパーツを24枚敷き詰める（描画は透明、クリックは有効）
+        // 1. 【透明な判定エリア】1時間ごとのパーツを24枚敷き詰める
         for (let h = 0; h < 24; h++) {
             const startAngle = (h * 15) - 90;
             const endAngle = ((h + 1) * 15) - 90;
@@ -205,42 +231,87 @@ document.addEventListener('DOMContentLoaded', () => {
             path.addEventListener('click', () => {
                 const startStr = `${String(h).padStart(2, '0')}:00`;
                 const endStr = `${String((h + 1) % 24).padStart(2, '0')}:00`;
-                showPage('input', { start: startStr, end: endStr });
+                state.editingEventIndex = null; // 新規追加として設定
+                showPage('input', { start: startStr, end: endStr, title: '', color: '#ff5e57' });
             });
             
             tapZonesGroup.appendChild(path);
         }
 
-        // 2. 【予定の可視化】登録されたスケジュールのみ中心から外周まで扇形として塗りつぶす
-        events.forEach(ev => {
+        // 2. 【予定の可視化 & 予定名のテキスト表示】
+        events.forEach((ev, index) => {
             let startAngle = timeToAngle(ev.start);
             let endAngle = timeToAngle(ev.end);
             if (endAngle <= startAngle) endAngle += 360; 
 
+            // 扇形の描画
             const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
             const arcPathData = describePieSlice(cx, cy, r, startAngle, endAngle);
-            
             path.setAttribute("d", arcPathData);
             path.setAttribute("fill", ev.color || '#54a0ff');
-            path.setAttribute("opacity", "0.85");
-            path.style.pointerEvents = "none"; // 下の透明タップゾーンにクリックを通す
+            path.setAttribute("opacity", "1.0");
+            path.setAttribute("class", "circle-event-arc");
             
+            // 予定セグメントタップで編集画面へ遷移
+            path.addEventListener('click', (e) => {
+                e.stopPropagation(); // 下層のtap-zoneのイベント発火を防ぐ
+                state.editingEventIndex = index;
+                showPage('input', { start: ev.start, end: ev.end, title: ev.title, color: ev.color });
+            });
             arcsGroup.appendChild(path);
+
+            // 予定名を常に水平（0度）で中央に配置
+            const midAngle = (startAngle + endAngle) / 2;
+            const textRadius = 50; 
+            const textPos = polarToCartesian(cx, cy, textRadius, midAngle);
+
+            const textNode = document.createElementNS("http://www.w3.org/2000/svg", "text");
+            textNode.setAttribute("x", textPos.x);
+            textNode.setAttribute("y", textPos.y);
+            textNode.setAttribute("class", "circle-event-text");
+            textNode.textContent = ev.title || '無題';
+
+            // テキストタップでも編集画面へ遷移
+            textNode.addEventListener('click', (e) => {
+                e.stopPropagation();
+                state.editingEventIndex = index;
+                showPage('input', { start: ev.start, end: ev.end, title: ev.title, color: ev.color });
+            });
+
+            arcsGroup.appendChild(textNode);
         });
 
-        // 3. 【外周テキスト】放射線（境界線）は完全に廃止し、数字だけを円のさらに外側に配置
+        // 3. 【時間の目盛り】外周から内側へ向かう24本の短い放射線を追加
+        const ticksGroup = document.createElementNS("http://www.w3.org/2000/svg", "g");
+        ticksGroup.setAttribute("class", "circle-ticks-group");
+        ticksGroup.style.pointerEvents = "none"; // タップ判定への干渉を防止
+
         for (let h = 0; h < 24; h++) {
             const angle = (h * 15) - 90;
-            
-            // 半径r(80)にオフセット(16px)を加え、円の外側に文字盤を配置
+            // 外周(r=80)と、そこから5px内側(r=75)の座標を算出
+            const pOuter = polarToCartesian(cx, cy, r, angle);
+            const pInner = polarToCartesian(cx, cy, r - 5, angle);
+
+            const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+            line.setAttribute("x1", pOuter.x);
+            line.setAttribute("y1", pOuter.y);
+            line.setAttribute("x2", pInner.x);
+            line.setAttribute("y2", pInner.y);
+            line.setAttribute("class", "circle-tick-line");
+
+            ticksGroup.appendChild(line);
+        }
+        gridGroup.appendChild(ticksGroup);
+
+        // 4. 【外周テキスト】数字を円の外側に配置
+        for (let h = 0; h < 24; h++) {
+            const angle = (h * 15) - 90;
             const textP = polarToCartesian(cx, cy, r + 16, angle);
             
             const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
             text.setAttribute("x", textP.x);
             text.setAttribute("y", textP.y);
             text.setAttribute("class", "circle-grid-text");
-            
-            // 数値のみを割り当て（「h」や「:00」は一切含まない）
             text.textContent = h;
             gridGroup.appendChild(text);
         }
@@ -268,32 +339,39 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!taskList) return;
         taskList.innerHTML = '';
 
-        const sortedEvents = [...dayData.events].sort((a, b) => (a.start || '').localeCompare(b.start || ''));
+        // 描画用にインデックスを紐付け保持した上でソート
+        const indexedEvents = dayData.events.map((ev, idx) => ({ ...ev, originalIndex: idx }));
+        indexedEvents.sort((a, b) => (a.start || '').localeCompare(b.start || ''));
 
-        if (sortedEvents.length === 0) {
+        if (indexedEvents.length === 0) {
             taskList.innerHTML = '<li style="text-align:center; color:#8892b0; padding:16px;">予定がありません</li>';
         } else {
-            sortedEvents.forEach((ev, idx) => {
+            indexedEvents.forEach((ev) => {
                 const li = document.createElement('li');
                 li.classList.add('task-item');
                 li.style.borderLeftColor = ev.color || '#fff';
                 
                 li.innerHTML = `
-                    <div>
+                    <div class="task-item-content">
                         <div style="font-weight:bold;">${escapeHtml(ev.title || '無題')}</div>
                         <div class="task-item-time">${ev.start} 〜 ${ev.end}</div>
                     </div>
                     <button class="task-delete-btn" type="button">削除</button>
                 `;
                 
-                li.querySelector('.task-delete-btn').addEventListener('click', () => {
-                    const originalIndex = dayData.events.indexOf(sortedEvents[idx]);
-                    if (originalIndex > -1) {
-                        dayData.events.splice(originalIndex, 1);
-                        state.db[state.selectedDate] = dayData;
-                        saveToStorage();
-                        renderDayDetail(); 
-                    }
+                // リストアイテムのコンテンツ部分をタップした時に編集画面を開く
+                li.querySelector('.task-item-content').addEventListener('click', () => {
+                    state.editingEventIndex = ev.originalIndex;
+                    showPage('input', { start: ev.start, end: ev.end, title: ev.title, color: ev.color });
+                });
+                
+                // 削除ボタン
+                li.querySelector('.task-delete-btn').addEventListener('click', (e) => {
+                    e.stopPropagation(); // 親要素のタップイベント(編集)が発火するのを防ぐ
+                    dayData.events.splice(ev.originalIndex, 1);
+                    state.db[state.selectedDate] = dayData;
+                    saveToStorage();
+                    renderDayDetail(); 
                 });
 
                 taskList.appendChild(li);
@@ -318,7 +396,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // フローティングボタンイベント
     const fabAddBtn = document.getElementById('fab-add-btn');
-    if (fabAddBtn) fabAddBtn.addEventListener('click', () => showPage('input'));
+    if (fabAddBtn) {
+        fabAddBtn.addEventListener('click', () => {
+            state.editingEventIndex = null; // 新規追加
+            showPage('input');
+        });
+    }
 
 
     // --- 3. スケジュール入力画面ロジック ---
@@ -356,11 +439,21 @@ document.addEventListener('DOMContentLoaded', () => {
     if (startInput) startInput.addEventListener('input', updateDuration);
     if (endInput) endInput.addEventListener('input', updateDuration);
 
-    function resetForm(startTime = '09:00', endTime = '10:00') {
+    function resetForm(startTime = '09:00', endTime = '10:00', title = '', color = '#ff5e57') {
         const titleInput = document.getElementById('event-title');
-        if (titleInput) titleInput.value = '';
+        if (titleInput) titleInput.value = title;
         if (startInput) startInput.value = startTime;
         if (endInput) endInput.value = endTime;
+        
+        state.selectedColor = color;
+        colorChips.forEach(chip => {
+            if (chip.getAttribute('data-color') === color) {
+                chip.classList.add('active');
+            } else {
+                chip.classList.remove('active');
+            }
+        });
+
         updateDuration();
     }
 
@@ -383,12 +476,20 @@ document.addEventListener('DOMContentLoaded', () => {
                 state.db[state.selectedDate].events = [];
             }
 
-            state.db[state.selectedDate].events.push({
+            const eventData = {
                 title: title,
                 start: start,
                 end: end,
                 color: state.selectedColor
-            });
+            };
+
+            if (state.editingEventIndex !== null) {
+                // 編集モード：既存のデータを上書き
+                state.db[state.selectedDate].events[state.editingEventIndex] = eventData;
+            } else {
+                // 新規登録モード：データを末尾に追加
+                state.db[state.selectedDate].events.push(eventData);
+            }
 
             saveToStorage();
             showPage('day-detail'); 
