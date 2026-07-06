@@ -1,16 +1,15 @@
-// HTMLがすべて読み込まれた後に、安全に各種DOM操作やカレンダー初期描画を行う
 document.addEventListener('DOMContentLoaded', () => {
 
     // --- 状態管理オブジェクト ---
     const state = {
-        currentView: 'calendar', // 'calendar' | 'day-detail' | 'input'
-        currentDate: new Date(),  // カレンダー表示切り替え用の月基準
-        selectedDate: null,       // 'YYYY-MM-DD' 形式の選択された日付キー
-        selectedColor: '#ff5e57', // 選択されているフォームカラー
-        db: {}                    // スケジュールデータ
+        currentView: 'calendar', 
+        currentDate: new Date(),  
+        selectedDate: null,       
+        selectedColor: '#ff5e57', 
+        db: {}                    
     };
 
-    // ローカルストレージデータの安全な復元
+    // ローカルストレージデータの復元
     try {
         const localData = localStorage.getItem('circle_calendar_db');
         if (localData) state.db = JSON.parse(localData);
@@ -24,43 +23,45 @@ document.addEventListener('DOMContentLoaded', () => {
     const backBtn = document.getElementById('back-btn');
     const headerTitle = document.getElementById('header-title');
 
-    // --- 画面表示制御（一元管理の最重要関数） ---
-    function showPage(viewName) {
+    // --- 画面表示制御（プリセット対応に拡張） ---
+    function showPage(viewName, presetTimes = null) {
         if (!appMain) return;
         
         state.currentView = viewName;
-        
-        // メインコンテナの data-view 属性を直接書き換えることで、CSS側で表示画面を一発で切り替えます
         appMain.setAttribute('data-view', viewName);
 
-        // 各画面に応じたヘッダー周りの細かなUI調整
         if (viewName === 'calendar') {
             if (backBtn) backBtn.style.display = 'none';
             if (headerTitle) headerTitle.textContent = '24hサークルカレンダー';
         } else if (viewName === 'day-detail') {
             if (backBtn) backBtn.style.display = 'flex';
             if (headerTitle) headerTitle.textContent = '1日のスケジュール';
-            renderDayDetail(); // スケジュール画面のデータ描画を走らせる
+            renderDayDetail(); 
         } else if (viewName === 'input') {
             if (backBtn) backBtn.style.display = 'flex';
             if (headerTitle) headerTitle.textContent = '予定の追加';
-            resetForm(); // フォームを綺麗な状態にする
+            
+            // タップされた時間情報があればそれをフォームに適用、なければデフォルト値
+            if (presetTimes) {
+                resetForm(presetTimes.start, presetTimes.end);
+            } else {
+                resetForm('09:00', '10:00');
+            }
         }
     }
 
-    // ヘッダー「戻る」ボタンのタップイベント
+    // ヘッダー「戻る」ボタン
     if (backBtn) {
         backBtn.addEventListener('click', () => {
             if (state.currentView === 'input') {
                 showPage('day-detail');
             } else if (state.currentView === 'day-detail') {
                 showPage('calendar');
-                renderCalendar(); // ドット状態を反映するためにカレンダーを再描画
+                renderCalendar(); 
             }
         });
     }
 
-    // データの保存
     function saveToStorage() {
         try {
             localStorage.setItem('circle_calendar_db', JSON.stringify(state.db));
@@ -84,14 +85,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const firstDayIndex = new Date(year, month, 1).getDay();
         const totalDays = new Date(year, month + 1, 0).getDate();
         
-        // 1日の曜日までの空白セルの生成
         for (let i = 0; i < firstDayIndex; i++) {
             const emptyCell = document.createElement('div');
             emptyCell.classList.add('calendar-day', 'empty');
             grid.appendChild(emptyCell);
         }
         
-        // 日付セルの生成
         const todayStr = formatLocalDate(new Date());
         for (let day = 1; day <= totalDays; day++) {
             const dayButton = document.createElement('button');
@@ -101,12 +100,10 @@ document.addEventListener('DOMContentLoaded', () => {
             const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
             if (dateStr === todayStr) dayButton.classList.add('today');
             
-            // 日付の数字
             const numDiv = document.createElement('div');
             numDiv.textContent = day;
             dayButton.appendChild(numDiv);
             
-            // スケジュールドットの配置
             const dotsDiv = document.createElement('div');
             dotsDiv.classList.add('day-dots');
             
@@ -120,7 +117,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             dayButton.appendChild(dotsDiv);
             
-            // 【最重要】日付タップイベント：詳細表示へ
             dayButton.addEventListener('click', () => {
                 state.selectedDate = dateStr;
                 showPage('day-detail');
@@ -130,7 +126,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // カレンダーの月切り替えイベント
     const prevBtn = document.getElementById('prev-month');
     const nextBtn = document.getElementById('next-month');
     if (prevBtn) {
@@ -164,31 +159,68 @@ document.addEventListener('DOMContentLoaded', () => {
         };
     }
 
-    function describeArc(x, y, radius, startAngle, endAngle) {
+    // ドーナツ状・扇型のパスデータを生成する関数 (太さ指定に対応)
+    function describeArc(x, y, radius, startAngle, endAngle, strokeWidth = 16) {
         if (endAngle - startAngle >= 360) {
             endAngle = startAngle + 359.99;
         }
-        const start = polarToCartesian(x, y, radius, endAngle);
-        const end = polarToCartesian(x, y, radius, startAngle);
+        // 外側の弧の座標
+        const startOuter = polarToCartesian(x, y, radius, endAngle);
+        const endOuter = polarToCartesian(x, y, radius, startAngle);
+        
+        // 内側の弧の座標 (太さ分だけ半径を引く)
+        const innerRadius = radius - strokeWidth;
+        const startInner = polarToCartesian(x, y, innerRadius, endAngle);
+        const endInner = polarToCartesian(x, y, innerRadius, startAngle);
+        
         const largeArcFlag = endAngle - startAngle <= 180 ? "0" : "1";
         
+        // 扇型を塗りつぶし領域として一筆書きするSVGパスコマンド
         return [
-            "M", start.x, start.y, 
-            "A", radius, radius, 0, largeArcFlag, 0, end.x, end.y
+            "M", startOuter.x, startOuter.y,
+            "A", radius, radius, 0, largeArcFlag, 0, endOuter.x, endOuter.y,
+            "L", endInner.x, endInner.y,
+            "A", innerRadius, innerRadius, 0, largeArcFlag, 1, startInner.x, startInner.y,
+            "Z"
         ].join(" ");
     }
 
     function drawCircleSchedule(events = []) {
         const gridGroup = document.getElementById('circle-grid-group');
         const arcsGroup = document.getElementById('circle-arcs-group');
-        if (!gridGroup || !arcsGroup) return;
+        const tapZonesGroup = document.getElementById('circle-tap-zones-group');
+        
+        if (!gridGroup || !arcsGroup || !tapZonesGroup) return;
 
         gridGroup.innerHTML = '';
         arcsGroup.innerHTML = '';
+        tapZonesGroup.innerHTML = '';
         
         const cx = 100, cy = 100, r = 80;
 
-        // 24時間目盛り線の動的描画
+        // ★【新規実装】1時間ずつの個別タップ用ボタンを最背面に24枚敷き詰める
+        for (let h = 0; h < 24; h++) {
+            const startAngle = (h * 15) - 90;
+            const endAngle = ((h + 1) * 15) - 90;
+            
+            const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+            // スケジュール表示と同じ幅(20px)の扇型パーツを生成
+            const pathData = describeArc(cx, cy, r, startAngle, endAngle, 30);
+            
+            path.setAttribute("d", pathData);
+            path.setAttribute("class", "tap-zone");
+            
+            // タップ時、その時間のプリセットを持って入力画面へ切り替える
+            path.addEventListener('click', () => {
+                const startStr = `${String(h).padStart(2, '0')}:00`;
+                const endStr = `${String((h + 1) % 24).padStart(2, '0')}:00`;
+                showPage('input', { start: startStr, end: endStr });
+            });
+            
+            tapZonesGroup.appendChild(path);
+        }
+
+        // 24時間目盛り線の描画
         for (let h = 0; h < 24; h++) {
             const angle = (h * 15) - 90;
             const outerP = polarToCartesian(cx, cy, r, angle);
@@ -213,22 +245,20 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
-        // スケジュールに合わせた円弧(Arc)の配置
+        // スケジュールに合わせた円弧(Arc)の重ね書き
         events.forEach(ev => {
             let startAngle = timeToAngle(ev.start);
             let endAngle = timeToAngle(ev.end);
-            
             if (endAngle <= startAngle) endAngle += 360; 
 
             const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
-            const arcPathData = describeArc(cx, cy, r - 20, startAngle, endAngle);
+            // 境界線ではなく面(閉じた扇形)として描くよう変更
+            const arcPathData = describeArc(cx, cy, r - 5, startAngle, endAngle, 10);
             
             path.setAttribute("d", arcPathData);
-            path.setAttribute("fill", "none");
-            path.setAttribute("stroke", ev.color || '#54a0ff');
-            path.setAttribute("stroke-width", "16");
-            path.setAttribute("opacity", "0.75");
-            path.setAttribute("stroke-linecap", "butt");
+            path.setAttribute("fill", ev.color || '#54a0ff');
+            path.setAttribute("opacity", "0.85");
+            path.style.pointerEvents = "none"; // スケジュール自体はタップ判定を透過させる
             
             arcsGroup.appendChild(path);
         });
@@ -250,10 +280,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const nameInput = document.getElementById('schedule-name-input');
         if (nameInput) nameInput.value = dayData.name || '';
 
-        // 円形スケジュール描画
         drawCircleSchedule(dayData.events);
 
-        // テキストリストの生成
         const taskList = document.getElementById('task-list');
         if (!taskList) return;
         taskList.innerHTML = '';
@@ -276,7 +304,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     <button class="task-delete-btn" type="button">削除</button>
                 `;
                 
-                // 削除処理
                 li.querySelector('.task-delete-btn').addEventListener('click', () => {
                     const originalIndex = dayData.events.indexOf(sortedEvents[idx]);
                     if (originalIndex > -1) {
@@ -307,7 +334,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // 入力フォーム移行ボタンのアクション紐付け
+    // ＋ボタン、中央ボタンはデフォルト（現在時刻周辺など）で起動
     const fabAddBtn = document.getElementById('fab-add-btn');
     const circleCenterBtn = document.getElementById('circle-center-btn');
     if (fabAddBtn) fabAddBtn.addEventListener('click', () => showPage('input'));
@@ -349,11 +376,12 @@ document.addEventListener('DOMContentLoaded', () => {
     if (startInput) startInput.addEventListener('input', updateDuration);
     if (endInput) endInput.addEventListener('input', updateDuration);
 
-    function resetForm() {
+    // 引数を受け取ってフォームの初期値を書き換える仕様に拡張
+    function resetForm(startTime = '09:00', endTime = '10:00') {
         const titleInput = document.getElementById('event-title');
         if (titleInput) titleInput.value = '';
-        if (startInput) startInput.value = '09:00';
-        if (endInput) endInput.value = '10:00';
+        if (startInput) startInput.value = startTime;
+        if (endInput) endInput.value = endTime;
         updateDuration();
     }
 
@@ -400,7 +428,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     }
 
-    // --- 初期動作の実行 ---
-    renderCalendar();  // カレンダーマスの生成
-    showPage('calendar'); // 確実にカレンダーを最初期表示に設定
+    // 初期化実行
+    renderCalendar();  
+    showPage('calendar'); 
 });

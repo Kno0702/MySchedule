@@ -47,10 +47,15 @@
                 <svg id="schedule-circle" viewBox="0 0 200 200">
                     <!-- 背景の円 -->
                     <circle cx="100" cy="100" r="80" class="circle-bg" />
+                    
+                    <!-- 【重要】1時間ごとのタップ反応・ハイライト用レイヤー（JSで動的生成） -->
+                    <g id="circle-tap-zones-group"></g>
+
                     <!-- 24時間の目盛り線やテキストはJSで動的に追加 -->
                     <g id="circle-grid-group"></g>
                     <!-- スケジュール円弧の描画エリア -->
                     <g id="circle-arcs-group"></g>
+                    
                     <!-- 中央のタップ領域 -->
                     <circle cx="100" cy="100" r="50" class="circle-center-tap" id="circle-center-btn" />
                     <text x="100" y="105" class="circle-center-text" id="circle-center-btn-text">タップして追加</text>

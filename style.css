@@ -45,7 +45,7 @@ body {
     min-height: 44px;
     display: flex;
     align-items: center;
-    display: none; /* JSの初期状態に合わせてCSSでも最初は非表示に設定 */
+    display: none;
 }
 
 /* --- メインコンテナ --- */
@@ -59,13 +59,10 @@ body {
     padding-right: 16px;
 }
 
-/* --- ★ 画面切り替えロジック（厳密な制御） ★ --- */
-/* 通常時はすべての画面ビューを完全に非表示にします */
+/* --- 画面切り替えロジック --- */
 .app-view {
     display: none;
 }
-
-/* 親要素（#app-main）の data-view 属性の値に応じて、該当する画面だけをピンポイントで強制表示します */
 [data-view="calendar"] #view-calendar { display: block; }
 [data-view="day-detail"] #view-day-detail { display: block; }
 [data-view="input"] #view-input { display: block; }
@@ -187,15 +184,31 @@ body {
     stroke: #23283b;
     stroke-width: 1.5;
 }
+
+/* ★ 1時間ごとのタップエリア設定 */
+.tap-zone {
+    fill: transparent;      /* 普段は完全に透明 */
+    cursor: pointer;
+    transition: fill 0.1s ease;
+}
+.tap-zone:hover {
+    fill: rgba(84, 160, 255, 0.05); /* PCでのマウスホールド用 */
+}
+.tap-zone:active {
+    fill: rgba(84, 160, 255, 0.3);  /* タップした瞬間一瞬青くハイライト */
+}
+
 .circle-grid-line {
     stroke: #2a314a;
     stroke-width: 0.5;
+    pointer-events: none; /* 下にあるタップ要素の邪魔をしない */
 }
 .circle-grid-text {
     fill: #8892b0;
     font-size: 6px;
     text-anchor: middle;
     dominant-baseline: middle;
+    pointer-events: none;
 }
 .circle-center-tap {
     fill: #1f2336;
