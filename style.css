@@ -3,12 +3,12 @@
     box-sizing: border-box;
     margin: 0;
     padding: 0;
-    -webkit-tap-highlight-color: transparent; /* タップ時のハイライトを無効化 */
+    -webkit-tap-highlight-color: transparent;
 }
 
 body {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-    background-color: #0f111a; /* 洗練されたクリーンなダークモード */
+    background-color: #0f111a;
     color: #e3e6ed;
     overflow-x: hidden;
     line-height: 1.5;
@@ -45,26 +45,31 @@ body {
     min-height: 44px;
     display: flex;
     align-items: center;
+    display: none; /* JSの初期状態に合わせてCSSでも最初は非表示に設定 */
 }
 
 /* --- メインコンテナ --- */
 .app-container {
-    padding-top: 72px; /* ヘッダーとの被り防止 */
+    padding-top: 72px;
     padding-bottom: 32px;
     width: 100%;
-    max-width: 500px; /* スマホ幅を基準に最大幅を制限 */
+    max-width: 500px;
     margin: 0 auto;
     padding-left: 16px;
     padding-right: 16px;
 }
 
-/* 画面切り替えクラス */
+/* --- ★ 画面切り替えロジック（厳密な制御） ★ --- */
+/* 通常時はすべての画面ビューを完全に非表示にします */
 .app-view {
-    transition: opacity 0.2s ease;
+    display: none;
 }
-.hidden {
-    display: none !important;
-}
+
+/* 親要素（#app-main）の data-view 属性の値に応じて、該当する画面だけをピンポイントで強制表示します */
+[data-view="calendar"] #view-calendar { display: block; }
+[data-view="day-detail"] #view-day-detail { display: block; }
+[data-view="input"] #view-input { display: block; }
+
 
 /* --- 1. カレンダー画面 --- */
 .calendar-controls {
@@ -81,6 +86,10 @@ body {
     height: 44px;
     border-radius: 50%;
     font-size: 1.2rem;
+    cursor: pointer;
+}
+.calendar-controls button:active {
+    background-color: #23283b;
 }
 .calendar-weekdays {
     display: grid;
@@ -100,7 +109,7 @@ body {
     background-color: #161925;
     border: 1px solid #23283b;
     border-radius: 8px;
-    aspect-ratio: 1; /* 正方形を維持 */
+    aspect-ratio: 1;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
@@ -114,11 +123,12 @@ body {
     background: none;
     border: none;
     cursor: default;
+    pointer-events: none;
 }
 .calendar-day.today {
     border: 2px solid #54a0ff;
+    background-color: #1b2234;
 }
-/* カレンダー内のドット（予定ありマーク） */
 .day-dots {
     display: flex;
     gap: 2px;
@@ -148,6 +158,7 @@ body {
     border-radius: 6px;
     color: #e3e6ed;
     padding: 8px 12px;
+    font-size: 0.95rem;
 }
 .routine-save-box button {
     background-color: #2e344e;
@@ -156,9 +167,12 @@ body {
     padding: 0 16px;
     border-radius: 6px;
     font-weight: bold;
+    cursor: pointer;
+}
+.routine-save-box button:active {
+    background-color: #3e4668;
 }
 
-/* SVG円形グラフ周り */
 .circle-wrapper {
     width: 85%;
     max-width: 320px;
@@ -198,7 +212,6 @@ body {
     pointer-events: none;
 }
 
-/* 簡易タスクリスト */
 .task-list-container {
     margin-top: 24px;
 }
@@ -230,9 +243,9 @@ body {
     color: #ff5e57;
     font-size: 0.9rem;
     padding: 4px 8px;
+    cursor: pointer;
 }
 
-/* フローティングアクションボタン (+) */
 .fab-btn {
     position: fixed;
     bottom: 24px;
@@ -249,6 +262,7 @@ body {
     align-items: center;
     justify-content: center;
     z-index: 90;
+    cursor: pointer;
 }
 .fab-btn:active {
     background-color: #3b82f6;
@@ -284,6 +298,10 @@ input[type="text"], input[type="time"] {
     color: #e3e6ed;
     padding: 0 12px;
     font-size: 1rem;
+    outline: none;
+}
+input[type="text"]:focus, input[type="time"]:focus {
+    border-color: #54a0ff;
 }
 .duration-display {
     background-color: #1f2336;
@@ -294,7 +312,6 @@ input[type="text"], input[type="time"] {
     color: #1dd1a1;
 }
 
-/* カラーパレット */
 .color-palette {
     display: flex;
     gap: 12px;
@@ -311,7 +328,6 @@ input[type="text"], input[type="time"] {
     transform: scale(1.1);
 }
 
-/* 登録ボタン */
 .primary-btn {
     width: 100%;
     height: 50px;
