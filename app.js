@@ -24,6 +24,132 @@ document.addEventListener('DOMContentLoaded', () => {
     const backBtn = document.getElementById('back-btn');
     const headerTitle = document.getElementById('header-title');
 
+    const startInput = document.getElementById('event-start');
+    const endInput = document.getElementById('event-end');
+    const durationText = document.getElementById('duration-text');
+    const startMinPicker = document.getElementById('start-min-picker');
+    const endMinPicker = document.getElementById('end-min-picker');
+
+    // --- クイック分選択タブ (5分刻み) の動的生成 ---
+    function initMinutePickers() {
+        if (!startMinPicker || !endMinPicker) return;
+        
+        startMinPicker.innerHTML = '';
+        endMinPicker.innerHTML = '';
+
+        for (let m = 0; m < 60; m += 5) {
+            const minStr = String(m).padStart(2, '0');
+            
+            // 開始時刻用タブ
+            const startTab = document.createElement('div');
+            startTab.className = 'minute-tab';
+            startTab.textContent = minStr;
+            startTab.setAttribute('data-min', minStr);
+            startTab.addEventListener('click', () => selectMinute('start', minStr));
+            startMinPicker.appendChild(startTab);
+
+            // 終了時刻用タブ
+            const endTab = document.createElement('div');
+            endTab.className = 'minute-tab';
+            endTab.textContent = minStr;
+            endTab.setAttribute('data-min', minStr);
+            endTab.addEventListener('click', () => selectMinute('end', minStr));
+            endMinPicker.appendChild(endTab);
+        }
+    }
+
+    // タブクリック時の処理
+    function selectMinute(type, minStr) {
+        const input = type === 'start' ? startInput : endInput;
+        if (!input) return;
+
+        let currentVal = input.value.replace(':', '').trim();
+        let hourStr = '09'; // デフォルト
+
+        if (currentVal.length >= 1) {
+            // 既に値が入力されている場合は、その時の「時」をキープ
+            const parsed = parseTimeInput(input.value);
+            if (parsed) {
+                hourStr = parsed.split(':')[0];
+            }
+        }
+        
+        input.value = `${hourStr}:${minStr}`;
+        updateDuration();
+        syncMinuteTabs();
+    }
+
+    // 入力欄の値と、5分刻みタブのアクティブ状態を同期する
+    function syncMinuteTabs() {
+        if (startInput) {
+            const parsed = parseTimeInput(startInput.value);
+            const currentMin = parsed ? parsed.split(':')[1] : '';
+            const tabs = startMinPicker.querySelectorAll('.minute-tab');
+            tabs.forEach(t => {
+                if (t.getAttribute('data-min') === currentMin) t.classList.add('active');
+                else t.classList.remove('active');
+            });
+        }
+        if (endInput) {
+            const parsed = parseTimeInput(endInput.value);
+            const currentMin = parsed ? parsed.split(':')[1] : '';
+            const tabs = endMinPicker.querySelectorAll('.minute-tab');
+            tabs.forEach(t => {
+                if (t.getAttribute('data-min') === currentMin) t.classList.add('active');
+                else t.classList.remove('active');
+            });
+        }
+    }
+
+    // キーボード直接入力（半角数字）を「HH:MM」に解析・補完するヘルパー
+    function parseTimeInput(val) {
+        // 数字以外を除去して半角化
+        let clean = val.replace(/[^0-9]/g, '');
+        if (!clean) return null;
+
+        let hour = 0;
+        let minute = 0;
+
+        if (clean.length <= 2) {
+            hour = parseInt(clean, 10);
+            minute = 0;
+        } else if (clean.length === 3) {
+            hour = parseInt(clean.substring(0, 1), 10);
+            minute = parseInt(clean.substring(1, 3), 10);
+        } else if (clean.length >= 4) {
+            hour = parseInt(clean.substring(0, 2), 10);
+            minute = parseInt(clean.substring(2, 4), 10);
+        }
+
+        if (hour > 23) hour = 23;
+        if (minute > 59) minute = 59;
+
+        return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+    }
+
+    // 入力欄のリアルタイム／フォーカスアウト時フォーマット適用
+    function setupTimeInputFormatting(input) {
+        if (!input) return;
+
+        // 入力中のリアルタイム補完（4桁打ったら自動でコロンを入れる等）
+        input.addEventListener('input', () => {
+            let val = input.value.replace(/[^0-9:]/g, '');
+            input.value = val;
+            updateDuration();
+        });
+
+        // フォーカスが外れたタイミングできれいな形式 (例: 930 -> 09:30) に確定させる
+        input.addEventListener('blur', () => {
+            if (!input.value.trim()) return;
+            const formatted = parseTimeInput(input.value);
+            if (formatted) {
+                input.value = formatted;
+            }
+            updateDuration();
+            syncMinuteTabs();
+        });
+    }
+
     // --- 画面表示制御 ---
     function showPage(viewName, presetTimes = null) {
         if (!appMain) return;
@@ -42,7 +168,6 @@ document.addEventListener('DOMContentLoaded', () => {
             if (backBtn) backBtn.style.display = 'flex';
             if (headerTitle) headerTitle.textContent = state.editingEventIndex !== null ? '予定の編集' : '予定の追加';
             
-            // 入力画面のタイトルとボタン文字を動的に切り替え
             const inputViewTitle = document.getElementById('input-view-title');
             const submitEventBtn = document.getElementById('submit-event-btn');
             if (inputViewTitle) {
@@ -57,10 +182,10 @@ document.addEventListener('DOMContentLoaded', () => {
             } else {
                 resetForm('09:00', '10:00', '', '#ff5e57');
             }
+            syncMinuteTabs();
         }
     }
 
-    // ヘッダー「戻る」ボタンの挙動
     if (backBtn) {
         backBtn.addEventListener('click', () => {
             if (state.currentView === 'input') {
@@ -80,7 +205,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // --- 1. 月間カレンダー描画処理（一番長い予定のドットを1つ表示） ---
+    // --- 1. 月間カレンダー描画処理 ---
     function renderCalendar() {
         const year = state.currentDate.getFullYear();
         const month = state.currentDate.getMonth();
@@ -119,12 +244,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 let longestEventColor = '#fff';
 
                 state.db[dateStr].events.forEach(ev => {
-                    const [sH, sM] = ev.start.split(':').map(Number);
-                    let [eH, eM] = ev.end.split(':').map(Number);
+                    const parsedStart = parseTimeInput(ev.start);
+                    const parsedEnd = parseTimeInput(ev.end);
+                    if (!parsedStart || !parsedEnd) return;
+
+                    const [sH, sM] = parsedStart.split(':').map(Number);
+                    let [eH, eM] = parsedEnd.split(':').map(Number);
                     
                     let startMin = sH * 60 + sM;
                     let endMin = eH * 60 + eM;
-                    if (endMin <= startMin) endMin += 24 * 60; // 日跨ぎ対応
+                    if (endMin <= startMin) endMin += 24 * 60; 
                     
                     const duration = endMin - startMin;
                     if (duration > maxDuration) {
@@ -170,12 +299,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
     // --- 2. 1日の詳細 & 円形SVG描画処理 ---
-
     function timeToAngle(timeStr) {
-        if (!timeStr) return -90;
-        const [hours, minutes] = timeStr.split(':').map(Number);
-        const totalMinutes = (hours || 0) * 60 + (minutes || 0);
-        return (totalMinutes * 0.25) - 90; // 1分 = 0.25度, 0時が真上(-90度)
+        const parsed = parseTimeInput(timeStr);
+        if (!parsed) return -90;
+        const [hours, minutes] = parsed.split(':').map(Number);
+        const totalMinutes = hours * 60 + minutes;
+        return (totalMinutes * 0.25) - 90; 
     }
 
     function polarToCartesian(centerX, centerY, radius, angleInDegrees) {
@@ -186,14 +315,12 @@ document.addEventListener('DOMContentLoaded', () => {
         };
     }
 
-    // 中心点 (x, y) から外周半径 (radius) までを隙間なく埋める扇形（パイ型ピース）パスの生成
     function describePieSlice(x, y, radius, startAngle, endAngle) {
         if (endAngle - startAngle >= 360) {
             endAngle = startAngle + 359.99;
         }
         const startOuter = polarToCartesian(x, y, radius, endAngle);
         const endOuter = polarToCartesian(x, y, radius, startAngle);
-        
         const largeArcFlag = endAngle - startAngle <= 180 ? "0" : "1";
         
         return [
@@ -217,7 +344,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         const cx = 120, cy = 120, r = 80;
 
-        // 1. 【透明な判定エリア】1時間ごとのパーツを24枚敷き詰める
+        // 1. 【見えない判定エリア】1時間ごとのパーツ
         for (let h = 0; h < 24; h++) {
             const startAngle = (h * 15) - 90;
             const endAngle = ((h + 1) * 15) - 90;
@@ -231,36 +358,32 @@ document.addEventListener('DOMContentLoaded', () => {
             path.addEventListener('click', () => {
                 const startStr = `${String(h).padStart(2, '0')}:00`;
                 const endStr = `${String((h + 1) % 24).padStart(2, '0')}:00`;
-                state.editingEventIndex = null; // 新規追加として設定
+                state.editingEventIndex = null; 
                 showPage('input', { start: startStr, end: endStr, title: '', color: '#ff5e57' });
             });
             
             tapZonesGroup.appendChild(path);
         }
 
-        // 2. 【予定の可視化 & 予定名のテキスト表示】
+        // 2. 【予定の可視化 & テキスト】
         events.forEach((ev, index) => {
             let startAngle = timeToAngle(ev.start);
             let endAngle = timeToAngle(ev.end);
             if (endAngle <= startAngle) endAngle += 360; 
 
-            // 扇形の描画
             const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
             const arcPathData = describePieSlice(cx, cy, r, startAngle, endAngle);
             path.setAttribute("d", arcPathData);
             path.setAttribute("fill", ev.color || '#54a0ff');
-            path.setAttribute("opacity", "1.0");
             path.setAttribute("class", "circle-event-arc");
             
-            // 予定セグメントタップで編集画面へ遷移
             path.addEventListener('click', (e) => {
-                e.stopPropagation(); // 下層のtap-zoneのイベント発火を防ぐ
+                e.stopPropagation(); 
                 state.editingEventIndex = index;
                 showPage('input', { start: ev.start, end: ev.end, title: ev.title, color: ev.color });
             });
             arcsGroup.appendChild(path);
 
-            // 予定名を常に水平（0度）で中央に配置
             const midAngle = (startAngle + endAngle) / 2;
             const textRadius = 50; 
             const textPos = polarToCartesian(cx, cy, textRadius, midAngle);
@@ -271,24 +394,21 @@ document.addEventListener('DOMContentLoaded', () => {
             textNode.setAttribute("class", "circle-event-text");
             textNode.textContent = ev.title || '無題';
 
-            // テキストタップでも編集画面へ遷移
             textNode.addEventListener('click', (e) => {
                 e.stopPropagation();
                 state.editingEventIndex = index;
                 showPage('input', { start: ev.start, end: ev.end, title: ev.title, color: ev.color });
             });
-
             arcsGroup.appendChild(textNode);
         });
 
-        // 3. 【時間の目盛り】外周から内側へ向かう24本の短い放射線を追加
+        // 3. 【時間の目盛り】
         const ticksGroup = document.createElementNS("http://www.w3.org/2000/svg", "g");
         ticksGroup.setAttribute("class", "circle-ticks-group");
-        ticksGroup.style.pointerEvents = "none"; // タップ判定への干渉を防止
+        ticksGroup.style.pointerEvents = "none";
 
         for (let h = 0; h < 24; h++) {
             const angle = (h * 15) - 90;
-            // 外周(r=80)と、そこから5px内側(r=75)の座標を算出
             const pOuter = polarToCartesian(cx, cy, r, angle);
             const pInner = polarToCartesian(cx, cy, r - 5, angle);
 
@@ -303,7 +423,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         gridGroup.appendChild(ticksGroup);
 
-        // 4. 【外周テキスト】数字を円の外側に配置
+        // 4. 【外周テキスト】
         for (let h = 0; h < 24; h++) {
             const angle = (h * 15) - 90;
             const textP = polarToCartesian(cx, cy, r + 16, angle);
@@ -339,7 +459,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!taskList) return;
         taskList.innerHTML = '';
 
-        // 描画用にインデックスを紐付け保持した上でソート
         const indexedEvents = dayData.events.map((ev, idx) => ({ ...ev, originalIndex: idx }));
         indexedEvents.sort((a, b) => (a.start || '').localeCompare(b.start || ''));
 
@@ -359,15 +478,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     <button class="task-delete-btn" type="button">削除</button>
                 `;
                 
-                // リストアイテムのコンテンツ部分をタップした時に編集画面を開く
                 li.querySelector('.task-item-content').addEventListener('click', () => {
                     state.editingEventIndex = ev.originalIndex;
                     showPage('input', { start: ev.start, end: ev.end, title: ev.title, color: ev.color });
                 });
                 
-                // 削除ボタン
                 li.querySelector('.task-delete-btn').addEventListener('click', (e) => {
-                    e.stopPropagation(); // 親要素のタップイベント(編集)が発火するのを防ぐ
+                    e.stopPropagation(); 
                     dayData.events.splice(ev.originalIndex, 1);
                     state.db[state.selectedDate] = dayData;
                     saveToStorage();
@@ -379,7 +496,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // スケジュール名保存
     const saveNameBtn = document.getElementById('save-schedule-name-btn');
     if (saveNameBtn) {
         saveNameBtn.addEventListener('click', () => {
@@ -394,11 +510,10 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // フローティングボタンイベント
     const fabAddBtn = document.getElementById('fab-add-btn');
     if (fabAddBtn) {
         fabAddBtn.addEventListener('click', () => {
-            state.editingEventIndex = null; // 新規追加
+            state.editingEventIndex = null; 
             showPage('input');
         });
     }
@@ -415,14 +530,15 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    const startInput = document.getElementById('event-start');
-    const endInput = document.getElementById('event-end');
-    const durationText = document.getElementById('duration-text');
-
     function updateDuration() {
         if (!startInput || !endInput || !durationText) return;
-        const [sH, sM] = startInput.value.split(':').map(Number);
-        let [eH, eM] = endInput.value.split(':').map(Number);
+
+        const parsedStart = parseTimeInput(startInput.value);
+        const parsedEnd = parseTimeInput(endInput.value);
+        if (!parsedStart || !parsedEnd) return;
+
+        const [sH, sM] = parsedStart.split(':').map(Number);
+        let [eH, eM] = parsedEnd.split(':').map(Number);
         
         let startMin = sH * 60 + sM;
         let endMin = eH * 60 + eM;
@@ -435,9 +551,6 @@ document.addEventListener('DOMContentLoaded', () => {
         
         durationText.textContent = `${diffH}時間 ${diffM}分`;
     }
-
-    if (startInput) startInput.addEventListener('input', updateDuration);
-    if (endInput) endInput.addEventListener('input', updateDuration);
 
     function resetForm(startTime = '09:00', endTime = '10:00', title = '', color = '#ff5e57') {
         const titleInput = document.getElementById('event-title');
@@ -464,8 +577,9 @@ document.addEventListener('DOMContentLoaded', () => {
             
             const titleInput = document.getElementById('event-title');
             const title = titleInput ? titleInput.value.trim() : '';
-            const start = startInput ? startInput.value : '09:00';
-            const end = endInput ? endInput.value : '10:00';
+            
+            const start = parseTimeInput(startInput ? startInput.value : '09:00') || '09:00';
+            const end = parseTimeInput(endInput ? endInput.value : '10:00') || '10:00';
             
             if (!title) return;
 
@@ -484,10 +598,8 @@ document.addEventListener('DOMContentLoaded', () => {
             };
 
             if (state.editingEventIndex !== null) {
-                // 編集モード：既存のデータを上書き
                 state.db[state.selectedDate].events[state.editingEventIndex] = eventData;
             } else {
-                // 新規登録モード：データを末尾に追加
                 state.db[state.selectedDate].events.push(eventData);
             }
 
@@ -504,12 +616,15 @@ document.addEventListener('DOMContentLoaded', () => {
         return `${y}-${m}-${d}`;
     }
 
-    // HTMLエスケープ処理
     function escapeHtml(str) {
         return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     }
 
-    // 初回初期化
+    // 初期化関数
+    initMinutePickers();
+    setupTimeInputFormatting(startInput);
+    setupTimeInputFormatting(endInput);
+    
     renderCalendar();  
     showPage('calendar'); 
 });

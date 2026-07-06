@@ -8,17 +8,13 @@
 </head>
 <body>
 
-    <!-- 共通ヘッダー -->
     <header class="app-header">
         <button id="back-btn" class="header-btn">← 戻る</button>
         <h1 id="header-title">24hサークルカレンダー</h1>
-        <div style="width: 44px;"></div> <!-- 右側のバランス用スペース -->
-    </header>
+        <div style="width: 44px;"></div> </header>
 
-    <!-- アプリ全体のコンテナ。data-view属性の値によってCSSで画面を切り替えます -->
     <main class="app-container" id="app-main" data-view="calendar">
         
-        <!-- 1. 月間カレンダー画面 -->
         <section id="view-calendar" class="app-view">
             <div class="calendar-controls">
                 <button id="prev-month" type="button">◀</button>
@@ -31,46 +27,35 @@
             <div id="calendar-grid" class="calendar-grid"></div>
         </section>
 
-        <!-- 2. スケジュール一覧画面（1日の詳細） -->
         <section id="view-day-detail" class="app-view">
             <div class="day-header">
                 <h2 id="selected-date-label">--月--日 (ー)</h2>
-                <!-- スケジュール名保存フォーム -->
                 <div class="routine-save-box">
                     <input type="text" id="schedule-name-input" placeholder="この日の名前（例: 出張、休日）">
                     <button id="save-schedule-name-btn" type="button">保存</button>
                 </div>
             </div>
 
-            <!-- 24時間円形スケジュール (SVG) -->
             <div class="circle-wrapper">
-                <!-- 外側の数字フォントサイズや余白を確保するため、viewBoxを 240x240 に拡張 -->
                 <svg id="schedule-circle" viewBox="0 0 240 240">
-                    <!-- 背景の円（ベース色） -->
                     <circle cx="120" cy="120" r="80" class="circle-bg" />
                     
-                    <!-- 【見えないボタン】1時間ごとのパイ型タップ反応レイヤー -->
                     <g id="circle-tap-zones-group"></g>
 
-                    <!-- スケジュール（扇形）の描画エリア -->
                     <g id="circle-arcs-group"></g>
 
-                    <!-- 円の外側の時間数字（テキスト）レイヤー -->
                     <g id="circle-grid-group"></g>
                 </svg>
             </div>
 
-            <!-- タイムライン風の簡易リスト表示 -->
             <div class="task-list-container">
                 <h3>本日の予定一覧</h3>
                 <ul id="task-list"></ul>
             </div>
 
-            <!-- 固定配置の「＋」ボタン -->
             <button id="fab-add-btn" class="fab-btn" type="button">+</button>
         </section>
 
-        <!-- 3. スケジュール入力画面 -->
         <section id="view-input" class="app-view">
             <h2 class="view-title" id="input-view-title">予定の登録</h2>
             <form id="schedule-form" onsubmit="return false;">
@@ -79,23 +64,22 @@
                     <input type="text" id="event-title" required placeholder="例: ミーティング、睡眠">
                 </div>
 
-                <div class="form-row">
+                <div class="form-row-vertical">
                     <div class="form-group">
-                        <label for="event-start">開始時刻</label>
-                        <input type="time" id="event-start" required value="09:00">
+                        <label for="event-start">開始時刻 (入力例: 0930)</label>
+                        <input type="text" id="event-start" required inputmode="numeric" placeholder="09:00" maxlength="5">
+                        <div class="minute-picker-label">クイック分選択 (5分刻み)</div>
+                        <div id="start-min-picker" class="minute-picker-container"></div>
                     </div>
+                    
                     <div class="form-group">
-                        <label for="event-end">終了時刻</label>
-                        <input type="time" id="event-end" required value="10:00">
+                        <label for="event-end">終了時刻 (入力例: 1000)</label>
+                        <input type="text" id="event-end" required inputmode="numeric" placeholder="10:00" maxlength="5">
+                        <div class="minute-picker-label">クイック分選択 (5分刻み)</div>
+                        <div id="end-min-picker" class="minute-picker-container"></div>
                     </div>
                 </div>
 
-                <!-- 自動計算される予定の長さ表示 -->
-                <div class="duration-display">
-                    予定の長さ: <span id="duration-text">1時間 0分</span>
-                </div>
-
-                <!-- カラーパレット選択 -->
                 <div class="form-group">
                     <label>カラー</label>
                     <div class="color-palette">

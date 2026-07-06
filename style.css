@@ -110,7 +110,7 @@ body {
     aspect-ratio: 1;
     display: flex;
     flex-direction: column;
-    justify-content: space-between; /* 上部に日付、下部にドットを配置 */
+    justify-content: space-between;
     padding: 6px;
     color: #fffafa;
     font-size: 0.9rem;
@@ -162,7 +162,7 @@ body {
 }
 .routine-save-box input::placeholder {
     color: #fffafa; 
-    opacity: 1;    /* ブラウザによる透過を無効にするおまじない */
+    opacity: 1;
 }
 .routine-save-box button {
     background-color: #d4acad;
@@ -172,9 +172,6 @@ body {
     border-radius: 6px;
     font-weight: bold;
     cursor: pointer;
-}
-.routine-save-box button:active {
-    background-color: #d4acad;
 }
 
 .circle-wrapper {
@@ -186,24 +183,20 @@ body {
     width: 100%;
     height: auto;
 }
-/* 円の背景：アプリ全体の背景色に合わせることで、予定がない場所を完全に「まっさら」に見せます */
 .circle-bg {
     fill: #e4d2d8;
     stroke: none;
 }
 
-/* 1時間ごとの「見えない」タップ判定エリア */
 .tap-zone {
     fill: transparent;      
     cursor: pointer;
     transition: fill 0.12s ease;
 }
-/* タップしている間だけ、中心から広がる扇形が薄い白（または青）でフィードバック表示される */
 .tap-zone:active {
     fill: rgba(255, 255, 255, 0.08);  
 }
 
-/* 円の予定セグメントのスタイル（タップ可能にするためのカーソル設定） */
 .circle-event-arc {
     cursor: pointer;
 }
@@ -211,7 +204,6 @@ body {
     opacity: 0.8;
 }
 
-/* 円の外側に配置される時間数字のスタイル */
 .circle-grid-text {
     fill: #c099a0;
     font-size: 9px;
@@ -223,16 +215,16 @@ body {
 .circle-event-text {
     font-size: 7px;
     font-weight: bold;
-    fill: #fffafa; /* 単色の白文字 */
+    fill: #fffafa; 
     text-anchor: middle;
-    dominant-baseline: middle; /* 算出した中心点に正確に配置 */
+    dominant-baseline: middle;
     letter-spacing: 0.2px;
     cursor: pointer;
 }
 .circle-tick-line {
-    stroke: #c099a0;      /* 全体のダークモードになじむシンプルな暗めの色 */
-    stroke-width: 1px;    /* 視覚的な邪魔をしない細い境界線 */
-    stroke-linecap: round; /* 線の端を丸めて綺麗に表現 */
+    stroke: #c099a0;      
+    stroke-width: 1px;    
+    stroke-linecap: round; 
 }
 .task-list-container {
     margin-top: 24px;
@@ -261,8 +253,8 @@ body {
     cursor: pointer;
 }
 .task-item:active {
-    background-color: #c99ba0; /* タップした瞬間に少し暗く（または明るく）する */
-    transform: scale(0.99);    /* ほんの少し沈み込ませてボタン感を出す */
+    background-color: #c99ba0; 
+    transform: scale(0.99);    
 }
 .task-item-time {
     font-size: 0.85rem;
@@ -275,7 +267,7 @@ body {
     font-size: 0.9rem;
     padding: 4px 8px;
     cursor: pointer;
-    z-index: 10; /* コンテンツエリアのタップと被らないように独立 */
+    z-index: 10; 
 }
 
 .fab-btn {
@@ -296,9 +288,6 @@ body {
     z-index: 90;
     cursor: pointer;
 }
-.fab-btn:active {
-    background-color: #d4acad;
-}
 
 /* --- 3. 入力画面 --- */
 .view-title {
@@ -308,41 +297,74 @@ body {
 .form-group {
     margin-bottom: 20px;
 }
-.form-row {
+.form-row-vertical {
     display: flex;
-    gap: 16px;
-}
-.form-row .form-group {
-    flex: 1;
+    flex-direction: column;
+    gap: 4px;
 }
 label {
     display: block;
-    margin-bottom: 8px;
+    margin-bottom: 6px;
     color: #302833;
     font-size: 0.9rem;
+    font-weight: bold;
 }
-input[type="text"], input[type="time"] {
+input[type="text"] {
     width: 100%;
-    height: 48px;
+    height: 46px;
     background-color: #d4acad;
-    border: 1px solid #d4acad;
+    border: 2px solid transparent;
     border-radius: 8px;
     color: #302833;
-    padding: 0 12px;
-    font-size: 1rem;
+    padding: 0 14px;
+    font-size: 1.1rem;
     outline: none;
+    font-variant-numeric: tabular-nums;
+    transition: border-color 0.2s ease, background-color 0.2s ease;
 }
-input[type="text"]:focus, input[type="time"]:focus {
-    border-color: #d4acad;
+input[type="text"]:focus {
+    border-color: #302833;
+    background-color: #dfbbc1;
 }
-.duration-display {
-    background-color: #d4acad;
-    padding: 12px;
-    border-radius: 8px;
-    margin-bottom: 20px;
-    font-size: 0.95rem;
+
+/* 5分刻みクイックタブ用スタイル */
+.minute-picker-label {
+    font-size: 0.75rem;
+    color: #7a6e7f;
+    margin: 6px 0 4px 2px;
+}
+.minute-picker-container {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 6px;
+    margin-bottom: 8px;
+}
+.minute-tab {
+    background-color: #f0e2e6;
+    border: 1px solid #dcd1d5;
+    color: #5a4f5d;
+    border-radius: 6px;
+    padding: 6px 0;
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    user-select: none;
+}
+.minute-tab:hover {
+    background-color: #e4d2d8;
     color: #302833;
 }
+.minute-tab.active {
+    background-color: #302833;
+    border-color: #302833;
+    color: #fffafa;
+    transform: scale(1.03);
+    box-shadow: 0 2px 5px rgba(0,0,0,0.15);
+}
+
+
 
 .color-palette {
     display: flex;
@@ -371,7 +393,4 @@ input[type="text"]:focus, input[type="time"]:focus {
     font-weight: bold;
     cursor: pointer;
     margin-top: 12px;
-}
-.primary-btn:active {
-    background-color: #d4acad;
 }
